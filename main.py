@@ -1,56 +1,61 @@
 import sys
 import argparse
-import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtWidgets import QApplication
 
 from ui.main_window import DashboardWindow
 from data.mock_generator import MockDataGenerator
 from data.serial_generator import SerialDataGenerator
+from data.bms_command_sender import MockBmsCommandSender, BmsCommandSender
+from data.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
+
 
 def main():
     parser = argparse.ArgumentParser(description="URC BMS Dashboard")
     parser.add_argument("--mock", action="store_true", help="Use mock data generator instead of serial")
     parser.add_argument("--port", type=str, default="/dev/ttyUSB0", help="Serial port to use (default: /dev/ttyUSB0)")
     parser.add_argument("--baud", type=int, default=115200, help="Serial baudrate (default: 115200)")
-    
-    # Parse args, removing them from sys.argv so QApplication doesn't complain about unknown options
+
     args, unknown = parser.parse_known_args()
     sys.argv = [sys.argv[0]] + unknown
 
     app = QApplication(sys.argv)
-    
-    # Configure pyqtgraph globally
+
     pg.setConfigOptions(antialias=True)
     pg.setConfigOption('background', '#121212')
     pg.setConfigOption('foreground', '#DDDDDD')
-    
+
+    volt_count = len(get_voltage_cell_mapping())
+    temp_count = len(get_temperature_sensor_mapping())
+
+    # Init command sender
+    if args.mock:
+        command_sender = MockBmsCommandSender()
+    else:
+        command_sender = BmsCommandSender(port=args.port, baudrate=args.baud)
+
     # Init main UI window
-    window = DashboardWindow()
+    window = DashboardWindow(command_sender=command_sender, is_mock=args.mock)
     window.show()
-    
+
     # Init data generator
     if args.mock:
-        generator = MockDataGenerator(
-            volt_count=len(window.volt_mapping),
-            temp_count=len(window.temp_mapping)
-        )
+        generator = MockDataGenerator(volt_count=volt_count, temp_count=temp_count)
     else:
         generator = SerialDataGenerator(
             port=args.port,
             baudrate=args.baud,
-            volt_count=len(window.volt_mapping),
-            temp_count=len(window.temp_mapping)
+            volt_count=volt_count,
+            temp_count=temp_count
         )
-    
-    # Wire the generator signals to the UI slots
-    generator.voltages_updated.connect(window.on_voltages_updated)
-    generator.temperatures_updated.connect(window.on_temperatures_updated)
-    
-    # Start simulating incoming data at 2Hz
+
+    # Wire generator telemetry to window dispatcher
+    generator.telemetry_received.connect(window.on_telemetry_received)
+
     generator.start(500)
-    
+
     sys.exit(app.exec())
+
 
 if __name__ == '__main__':
     main()
