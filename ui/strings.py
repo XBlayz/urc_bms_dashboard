@@ -17,15 +17,12 @@ class Strings:
     NAV_OVERRIDE = "OVERRIDE"
     NAV_LOGS = "LOGS"
     NAV_EXPORT = "EXPORT DATA"
-    
+
     STATE_SDC = "SDC"
     STATE_AIR_PLUS = "AIR+"
     STATE_AIR_MINUS = "AIR-"
     STATE_PRECHARGE = "PRE-CHARGE"
-    STATE_M_AIR_PLUS = "M. AIR+"
-    STATE_M_AIR_MINUS = "M. AIR-"
-    STATE_M_PRECHARGE = "M. PRE-CHARGE"
-    
+
     STATUS_DRIVING = "DRIVING"
 
     # time_series_plot
@@ -36,9 +33,91 @@ class Strings:
     BTN_RESET = "RESET"
     STATS_EMPTY = "STD: --   MAX: --   MIN: --"
     FMT_STATS = "STD: {std:.1f}   MAX: {max:.3f}{unit}   MIN: {min:.3f}{unit}"
-    
+
     # selection_panel
     EMPTY_TIME = "--"
     EMPTY_VALUE = "--"
     FMT_TIME = "T: {time:.2f}s"
     FMT_VALUE = "{value:.3f} {unit}"
+
+    # system state labels
+    STATE_STANDBY = "STANDBY"
+    STATE_DRIVING = "DRIVING"
+    STATE_CHARGING = "CHARGING"
+    STATE_ERROR = "ERROR"
+    STATE_PRECHARGING = "PRECHARGING"
+    STATE_PREPARING_CHARGING = "PREPARING CHARGING"
+    STATE_INITIALIZING = "INITIALIZING"
+    STATE_EXITING_CHARGING = "EXITING CHARGING"
+    STATE_OVERRIDE = "OVERRIDE"
+    STATE_NONE = "NONE"
+
+    # plates
+    FMT_SOC = "{value:.1f}%"
+    FMT_TIME_HMS = "{hours:02d}:{minutes:02d}:{seconds:02d}"
+    FMT_TIME_UNKNOWN = "--:--:--"
+    FMT_VOLTAGE = "{value:.1f} V"
+    FMT_CURRENT = "{value:.1f} A"
+    FMT_POWER = "{value:.1f} W"
+    FMT_STAT = "{label}: {value:.3f}{unit}"
+    FMT_STAT_DELTA = "{label}: {value:.3f}{unit} (delta {delta:.3f}{unit})"
+
+    # sidebar state panel
+    LBL_UPTIME = "UPTIME"
+    LBL_FAULTS = "FAULTS"
+    LBL_PACK_VOLTAGE = "PACK VOLTAGE"
+    LBL_PACK_VOLTAGE_POST_AIR = "PACK VOLTAGE (POST AIR)"
+    LBL_PACK_CURRENT = "PACK CURRENT"
+    LBL_SOC = "SoC"
+    LBL_SOP_DISCHG = "SOP DISCHARGE"
+    LBL_SOP_CHG = "SOP CHARGE"
+    LBL_VOLT_STATS = "VOLTAGE STATS"
+    LBL_TEMP_STATS = "TEMPERATURE STATS"
+    LBL_MIN = "MIN"
+    LBL_MAX = "MAX"
+    LBL_AVG = "AVG"
+    LBL_DELTA = "DELTA"
+    LBL_CONNECTION = "CONNECTION"
+    LBL_FSM_STATE = "FSM STATE"
+    LBL_CONNECTED = "CONNECTED"
+    LBL_DISCONNECTED = "DISCONNECTED"
+    LBL_MOCK_MODE = "MOCK MODE"
+
+    # charging screen
+    LBL_CHARGING_STATE = "CHARGING STATE"
+    LBL_CHARGE_DURATION = "CHARGE DURATION"
+    LBL_ESTIMATED_REMAINING = "ESTIMATED REMAINING"
+    BTN_START_CHARGING = "START CHARGING"
+    BTN_STOP_CHARGING = "STOP CHARGING"
+    BTN_SETTINGS_SUBMIT = "APPLY SETTINGS"
+    LBL_SET_VOLTAGE = "Set Voltage (V)"
+    LBL_SET_CURRENT = "Set Current (A)"
+    LBL_CHARGE_VOLTAGE = "CHARGE VOLTAGE"
+    LBL_CHARGE_CURRENT = "CHARGE CURRENT"
+    LBL_SOC_HISTORY = "SoC HISTORY"
+    LBL_VOLTAGE_HISTORY = "VOLTAGE HISTORY"
+    LBL_CURRENT_HISTORY = "CURRENT HISTORY"
+    LBL_BALANCING = "BALANCING"
+    MSG_CHARGING_STARTED = "Charging started"
+    MSG_CHARGING_STOPPED = "Charging stopped"
+    MSG_SETTINGS_APPLIED = "Charging settings applied"
+    TITLE_CHARGING_SUMMARY = "Charging Summary"
+    MSG_CONFIRM_START = "Start charging at {voltage}V and {current}A?"
+
+    # logs / export
+    LBL_LOGS = "LOGS"
+    LBL_EXPORT = "EXPORT DATA"
+    LBL_NO_LOGS = "No logs available yet."
+    LBL_NO_EXPORT = "No export data available yet."
+
+    # plots
+    TITLE_SOC = "SoC"
+    TITLE_PACK_VOLTAGE = "PACK VOLTAGE"
+    TITLE_PACK_VOLTAGE_POST_AIR = "PACK VOLTAGE (POST AIR)"
+    TITLE_PACK_CURRENT = "PACK CURRENT"
+    TITLE_FSM_STATE = "FSM STATE"
+    TITLE_ACTUATOR_STATE = "ACTUATOR STATE"
+    TITLE_CELL_VOLTAGES = "CELL VOLTAGES"
+    TITLE_VOLTAGE_HISTOGRAM = "VOLTAGE HISTOGRAM"
+    TITLE_CELL_TEMPERATURES = "CELL TEMPERATURES"
+    TITLE_TEMP_HISTOGRAM = "TEMPERATURE HISTOGRAM"
