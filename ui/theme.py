@@ -1,4 +1,7 @@
 class Theme:
+    H_SIZE_S = 400
+    W_SIZE_S = 900
+
     @classmethod
     def main_window(cls):
         return "background-color: #121212;"

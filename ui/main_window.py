@@ -17,7 +17,11 @@ class DashboardWindow(QMainWindow):
     def __init__(self, command_sender=None, is_mock=False):
         super().__init__()
         self.setWindowTitle(Strings.WINDOW_TITLE)
-        self.resize(1400, 900)
+        sidebar_min = 240
+        padding = 40
+        self.resize(sidebar_min + Theme.W_SIZE_S + padding, Theme.H_SIZE_S + 400)
+        self.setMinimumWidth(sidebar_min + Theme.W_SIZE_S + padding)
+        self.setMinimumHeight(Theme.H_SIZE_S + 400)
         self.setStyleSheet(Theme.main_window())
 
         self.volt_mapping = get_voltage_cell_mapping()
@@ -78,9 +82,6 @@ class DashboardWindow(QMainWindow):
 
         # Show metrics screen by default
         self.stack.setCurrentIndex(0)
-
-        # Enforce minimum window width to prevent horizontal scroll
-        self.setMinimumWidth(1100)
 
     def on_telemetry_received(self, telemetry):
         current_time = telemetry.pack_state.voltage if telemetry.HasField("pack_state") else 0.0
