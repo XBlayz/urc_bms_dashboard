@@ -176,16 +176,16 @@ class Sidebar(QFrame):
         self.fsm_plate = EnumStatePlate(
             Strings.LBL_FSM_STATE,
             {
-                "STANDBY": Strings.STATE_STANDBY,
-                "DRIVING": Strings.STATE_DRIVING,
-                "CHARGING": Strings.STATE_CHARGING,
-                "ERROR": Strings.STATE_ERROR,
-                "PRECHARGING": Strings.STATE_PRECHARGING,
-                "PREPARING CHARGING": Strings.STATE_PREPARING_CHARGING,
-                "INITIALIZING": Strings.STATE_INITIALIZING,
-                "EXITING CHARGING": Strings.STATE_EXITING_CHARGING,
-                "OVERRIDE": Strings.STATE_OVERRIDE,
-                "NONE": Strings.STATE_NONE,
+                0: Strings.STATE_STANDBY,
+                1: Strings.STATE_DRIVING,
+                2: Strings.STATE_CHARGING,
+                3: Strings.STATE_ERROR,
+                4: Strings.STATE_PRECHARGING,
+                5: Strings.STATE_PREPARING_CHARGING,
+                6: Strings.STATE_INITIALIZING,
+                7: Strings.STATE_EXITING_CHARGING,
+                8: Strings.STATE_OVERRIDE,
+                10: Strings.STATE_NONE,
             },
             value_key="state"
         )

@@ -322,8 +322,14 @@ class StackedBoolPlot(QFrame):
             else:
                 lower = cumsum[:, i - 1]
 
-            # Update top curve
-            self.curves[i].setData(x_view, upper, stepMode=True)
+            # Update top curve (stepMode requires len(X) == len(Y) + 1)
+            if len(x_view) > 0:
+                x_step = np.empty(len(x_view) + 1, dtype=x_view.dtype)
+                x_step[:-1] = x_view
+                x_step[-1] = x_view[-1] + 1.0
+            else:
+                x_step = x_view
+            self.curves[i].setData(x_step, upper, stepMode=True)
 
             # Build fill path between upper and lower
             path = QPainterPath()
@@ -340,12 +346,11 @@ class StackedBoolPlot(QFrame):
 
             self.fill_items[i].setPath(path)
 
-        if self.auto_scroll_cb.isChecked(): # pyright: ignore[reportAttributeAccessIssue]
-            current_time = x_view[-1]
-            window_size_seconds = 10
-            min_x = max(0, current_time - window_size_seconds)
-            self.plot_widget.setXRange(min_x, max(window_size_seconds, current_time))
-            self.plot_widget.setYRange(-0.2, self.series_count + 0.2)
+        current_time = x_view[-1]
+        window_size_seconds = 10
+        min_x = max(0, current_time - window_size_seconds)
+        self.plot_widget.setXRange(min_x, max(window_size_seconds, current_time))
+        self.plot_widget.setYRange(-0.2, self.series_count + 0.2)
 
         active_count = np.sum(data_2d[len(x_view) - 1, :])
         self.stats_lbl.setText(f"ACTIVE: {int(active_count)}/{self.series_count}")

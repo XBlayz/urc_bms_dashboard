@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget, QScrollArea, QSizePolicy
 from PyQt6.QtCore import Qt
 
@@ -29,6 +30,7 @@ class DashboardWindow(QMainWindow):
 
         self.command_sender = command_sender
         self.is_mock = is_mock
+        self._start_time = None
 
         self.init_ui()
 
@@ -84,7 +86,9 @@ class DashboardWindow(QMainWindow):
         self.stack.setCurrentIndex(0)
 
     def on_telemetry_received(self, telemetry):
-        current_time = telemetry.pack_state.voltage if telemetry.HasField("pack_state") else 0.0
+        if self._start_time is None:
+            self._start_time = time.time()
+        current_time = time.time() - self._start_time
 
         # Update sidebar state panels
         self.sidebar.update_connection_status(connected=True, is_mock=self.is_mock)
