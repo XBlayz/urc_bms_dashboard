@@ -24,31 +24,31 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emessages.proto\"(\n\tBmsStatus\x12\x1b\n\x05state\x18\x02 \x01(\x0e\x32\x0c.SystemState\"y\n\tPackState\x12\x0f\n\x07voltage\x18\x01 \x01(\x02\x12\x0f\n\x07\x63urrent\x18\x02 \x01(\x02\x12\x18\n\x10post_air_voltage\x18\x03 \x01(\x02\x12\x0b\n\x03soc\x18\x04 \x01(\x02\x12\x12\n\nsop_dischg\x18\x05 \x01(\x02\x12\x0f\n\x07sop_chg\x18\x06 \x01(\x02\"4\n\x0c\x43\x65llVoltages\x12\x12\n\ndevice_idx\x18\x01 \x01(\r\x12\x10\n\x08voltages\x18\x02 \x03(\x02\"<\n\x10\x43\x65llTemperatures\x12\x12\n\ndevice_idx\x18\x01 \x01(\r\x12\x14\n\x0ctemperatures\x18\x02 \x03(\x02\")\n\x0e\x42\x61lancingState\x12\x17\n\x0f\x62\x61lancing_masks\x18\x01 \x01(\x0c\"R\n\rActuatorState\x12\x0f\n\x07\x61ir_pos\x18\x01 \x01(\x08\x12\x0f\n\x07\x61ir_neg\x18\x02 \x01(\x08\x12\x12\n\npre_charge\x18\x03 \x01(\x08\x12\x0b\n\x03sdc\x18\x04 \x01(\x08\"<\n\x10\x43hargingSettings\x12\x13\n\x0bset_voltage\x18\x01 \x01(\x02\x12\x13\n\x0bset_current\x18\x02 \x01(\x02\":\n\x0b\x44iagnostics\x12\x11\n\tams_error\x18\x01 \x01(\x08\x12\x18\n\x10\x64iagnostic_state\x18\x02 \x01(\r\"\xc9\x02\n\x0c\x42msTelemetry\x12\x1c\n\x06status\x18\x01 \x01(\x0b\x32\n.BmsStatusH\x00\x12 \n\npack_state\x18\x02 \x01(\x0b\x32\n.PackStateH\x00\x12&\n\rcell_voltages\x18\x03 \x01(\x0b\x32\r.CellVoltagesH\x00\x12.\n\x11\x63\x65ll_temperatures\x18\x04 \x01(\x0b\x32\x11.CellTemperaturesH\x00\x12$\n\tbalancing\x18\x05 \x01(\x0b\x32\x0f.BalancingStateH\x00\x12$\n\ncontactors\x18\x06 \x01(\x0b\x32\x0e.ActuatorStateH\x00\x12%\n\x08\x63harging\x18\x07 \x01(\x0b\x32\x11.ChargingSettingsH\x00\x12#\n\x0b\x64iagnostics\x18\x08 \x01(\x0b\x32\x0c.DiagnosticsH\x00\x42\t\n\x07payload*\xc3\x02\n\x0bSystemState\x12\x18\n\x14SYSTEM_STATE_STANDBY\x10\x00\x12\x18\n\x14SYSTEM_STATE_DRIVING\x10\x01\x12\x19\n\x15SYSTEM_STATE_CHARGING\x10\x02\x12\x16\n\x12SYSTEM_STATE_ERROR\x10\x03\x12\x1c\n\x18SYSTEM_STATE_PRECHARGING\x10\x04\x12#\n\x1fSYSTEM_STATE_PREPARING_CHARGING\x10\x05\x12\x1d\n\x19SYSTEM_STATE_INITIALIZING\x10\x06\x12!\n\x1dSYSTEM_STATE_EXITING_CHARGING\x10\x07\x12\x19\n\x15SYSTEM_STATE_OVERRIDE\x10\x08\x12\x16\n\x12SYSTEM_STATE_COUNT\x10\t\x12\x15\n\x11SYSTEM_STATE_NONE\x10\nb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emessages.proto\x12\x08messages\"1\n\tBmsStatus\x12$\n\x05state\x18\x01 \x01(\x0e\x32\x15.messages.SystemState\"y\n\tPackState\x12\x0f\n\x07voltage\x18\x01 \x01(\x02\x12\x0f\n\x07\x63urrent\x18\x02 \x01(\x02\x12\x18\n\x10post_air_voltage\x18\x03 \x01(\x02\x12\x0b\n\x03soc\x18\x04 \x01(\x02\x12\x12\n\nsop_dischg\x18\x05 \x01(\x02\x12\x0f\n\x07sop_chg\x18\x06 \x01(\x02\"4\n\x0c\x43\x65llVoltages\x12\x12\n\ndevice_idx\x18\x01 \x01(\r\x12\x10\n\x08voltages\x18\x02 \x03(\x02\"<\n\x10\x43\x65llTemperatures\x12\x12\n\ndevice_idx\x18\x01 \x01(\r\x12\x14\n\x0ctemperatures\x18\x02 \x03(\x02\")\n\x0e\x42\x61lancingState\x12\x17\n\x0f\x62\x61lancing_masks\x18\x01 \x01(\x0c\"R\n\rActuatorState\x12\x0f\n\x07\x61ir_pos\x18\x01 \x01(\x08\x12\x0f\n\x07\x61ir_neg\x18\x02 \x01(\x08\x12\x12\n\npre_charge\x18\x03 \x01(\x08\x12\x0b\n\x03sdc\x18\x04 \x01(\x08\"<\n\x10\x43hargingSettings\x12\x13\n\x0bset_voltage\x18\x01 \x01(\x02\x12\x13\n\x0bset_current\x18\x02 \x01(\x02\":\n\x0b\x44iagnostics\x12\x11\n\tams_error\x18\x01 \x01(\x08\x12\x18\n\x10\x64iagnostic_state\x18\x02 \x01(\r\"\xf6\x02\n\x0c\x42msTelemetry\x12#\n\x06status\x18\x01 \x01(\x0b\x32\x13.messages.BmsStatus\x12\'\n\npack_state\x18\x02 \x01(\x0b\x32\x13.messages.PackState\x12-\n\rcell_voltages\x18\x03 \x01(\x0b\x32\x16.messages.CellVoltages\x12\x35\n\x11\x63\x65ll_temperatures\x18\x04 \x01(\x0b\x32\x1a.messages.CellTemperatures\x12+\n\tbalancing\x18\x05 \x01(\x0b\x32\x18.messages.BalancingState\x12+\n\ncontactors\x18\x06 \x01(\x0b\x32\x17.messages.ActuatorState\x12,\n\x08\x63harging\x18\x07 \x01(\x0b\x32\x1a.messages.ChargingSettings\x12*\n\x0b\x64iagnostics\x18\x08 \x01(\x0b\x32\x15.messages.Diagnostics*\xc3\x02\n\x0bSystemState\x12\x18\n\x14SYSTEM_STATE_STANDBY\x10\x00\x12\x18\n\x14SYSTEM_STATE_DRIVING\x10\x01\x12\x19\n\x15SYSTEM_STATE_CHARGING\x10\x02\x12\x16\n\x12SYSTEM_STATE_ERROR\x10\x03\x12\x1c\n\x18SYSTEM_STATE_PRECHARGING\x10\x04\x12#\n\x1fSYSTEM_STATE_PREPARING_CHARGING\x10\x05\x12\x1d\n\x19SYSTEM_STATE_INITIALIZING\x10\x06\x12!\n\x1dSYSTEM_STATE_EXITING_CHARGING\x10\x07\x12\x19\n\x15SYSTEM_STATE_OVERRIDE\x10\x08\x12\x16\n\x12SYSTEM_STATE_COUNT\x10\t\x12\x15\n\x11SYSTEM_STATE_NONE\x10\nb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'messages_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_SYSTEMSTATE']._serialized_start=881
-  _globals['_SYSTEMSTATE']._serialized_end=1204
-  _globals['_BMSSTATUS']._serialized_start=18
-  _globals['_BMSSTATUS']._serialized_end=58
-  _globals['_PACKSTATE']._serialized_start=60
-  _globals['_PACKSTATE']._serialized_end=181
-  _globals['_CELLVOLTAGES']._serialized_start=183
-  _globals['_CELLVOLTAGES']._serialized_end=235
-  _globals['_CELLTEMPERATURES']._serialized_start=237
-  _globals['_CELLTEMPERATURES']._serialized_end=297
-  _globals['_BALANCINGSTATE']._serialized_start=299
-  _globals['_BALANCINGSTATE']._serialized_end=340
-  _globals['_ACTUATORSTATE']._serialized_start=342
-  _globals['_ACTUATORSTATE']._serialized_end=424
-  _globals['_CHARGINGSETTINGS']._serialized_start=426
-  _globals['_CHARGINGSETTINGS']._serialized_end=486
-  _globals['_DIAGNOSTICS']._serialized_start=488
-  _globals['_DIAGNOSTICS']._serialized_end=546
-  _globals['_BMSTELEMETRY']._serialized_start=549
-  _globals['_BMSTELEMETRY']._serialized_end=878
+  _globals['_SYSTEMSTATE']._serialized_start=945
+  _globals['_SYSTEMSTATE']._serialized_end=1268
+  _globals['_BMSSTATUS']._serialized_start=28
+  _globals['_BMSSTATUS']._serialized_end=77
+  _globals['_PACKSTATE']._serialized_start=79
+  _globals['_PACKSTATE']._serialized_end=200
+  _globals['_CELLVOLTAGES']._serialized_start=202
+  _globals['_CELLVOLTAGES']._serialized_end=254
+  _globals['_CELLTEMPERATURES']._serialized_start=256
+  _globals['_CELLTEMPERATURES']._serialized_end=316
+  _globals['_BALANCINGSTATE']._serialized_start=318
+  _globals['_BALANCINGSTATE']._serialized_end=359
+  _globals['_ACTUATORSTATE']._serialized_start=361
+  _globals['_ACTUATORSTATE']._serialized_end=443
+  _globals['_CHARGINGSETTINGS']._serialized_start=445
+  _globals['_CHARGINGSETTINGS']._serialized_end=505
+  _globals['_DIAGNOSTICS']._serialized_start=507
+  _globals['_DIAGNOSTICS']._serialized_end=565
+  _globals['_BMSTELEMETRY']._serialized_start=568
+  _globals['_BMSTELEMETRY']._serialized_end=942
 # @@protoc_insertion_point(module_scope)

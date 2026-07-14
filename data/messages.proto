@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package messages;
+
+enum SystemState {
+  SYSTEM_STATE_STANDBY = 0;
+  SYSTEM_STATE_DRIVING = 1;
+  SYSTEM_STATE_CHARGING = 2;
+  SYSTEM_STATE_ERROR = 3;
+  SYSTEM_STATE_PRECHARGING = 4;
+  SYSTEM_STATE_PREPARING_CHARGING = 5;
+  SYSTEM_STATE_INITIALIZING = 6;
+  SYSTEM_STATE_EXITING_CHARGING = 7;
+  SYSTEM_STATE_OVERRIDE = 8;
+  SYSTEM_STATE_COUNT = 9;
+  SYSTEM_STATE_NONE = 10;
+}
+
+message BmsStatus {
+  SystemState state = 1;
+}
+
+message PackState {
+  float voltage = 1;
+  float current = 2;
+  float post_air_voltage = 3;
+  float soc = 4;
+  float sop_dischg = 5;
+  float sop_chg = 6;
+}
+
+message CellVoltages {
+  uint32 device_idx = 1;
+  repeated float voltages = 2;
+}
+
+message CellTemperatures {
+  uint32 device_idx = 1;
+  repeated float temperatures = 2;
+}
+
+message BalancingState {
+  bytes balancing_masks = 1;
+}
+
+message ActuatorState {
+  bool air_pos = 1;
+  bool air_neg = 2;
+  bool pre_charge = 3;
+  bool sdc = 4;
+}
+
+message ChargingSettings {
+  float set_voltage = 1;
+  float set_current = 2;
+}
+
+message Diagnostics {
+  bool ams_error = 1;
+  uint32 diagnostic_state = 2;
+}
+
+message BmsTelemetry {
+  BmsStatus status = 1;
+  PackState pack_state = 2;
+  CellVoltages cell_voltages = 3;
+  CellTemperatures cell_temperatures = 4;
+  BalancingState balancing = 5;
+  ActuatorState contactors = 6;
+  ChargingSettings charging = 7;
+  Diagnostics diagnostics = 8;
+}
