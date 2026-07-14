@@ -1,14 +1,17 @@
 import numpy as np
 from PyQt6.QtWidgets import (
-    QFrame, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QGridLayout, QWidget
+    QFrame, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QGridLayout, QWidget,
+    QHeaderView
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QAbstractTableModel
 
+from ui.widgets.time_series_plot import TimeSeriesPlotWidget
 from ui.widgets.plot_widgets import EnumPlot, StackedBoolPlot, BarChartWidget, SimpleTimeSeriesPlot
 from ui.widgets.voltages_plot import VoltagesPlotWidget
 from ui.widgets.temperatures_plot import TemperaturesPlotWidget
 from ui.strings import Strings
 from ui.theme import CurrentTheme as Theme
+from data.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
 
 
 class ResponsiveGrid(QWidget):
@@ -61,6 +64,61 @@ class ResponsiveGrid(QWidget):
             self._grid.addWidget(widget, row, col)
 
 
+class DualVoltagesTableModel(QAbstractTableModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.rows = 1
+        self.cols = 2
+        self.latest_matrix = [["--", "--"]]
+
+    def update_data(self, x_data, y_data):
+        if len(x_data) > 0:
+            latest = y_data[-1]
+            self.latest_matrix[0][0] = f"{latest[0]:.2f} V" if len(latest) > 0 else "--"
+            self.latest_matrix[0][1] = f"{latest[1]:.2f} V" if len(latest) > 1 else "--"
+            self.layoutChanged.emit()
+
+    def rowCount(self, parent=None):
+        return self.rows
+
+    def columnCount(self, parent=None):
+        return self.cols
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid():
+            return None
+        r, c = index.row(), index.column()
+        val = self.latest_matrix[r][c]
+        if role == Qt.ItemDataRole.DisplayRole:
+            return val
+        return None
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if role == Qt.ItemDataRole.DisplayRole:
+            if orientation == Qt.Orientation.Horizontal:
+                return ["Pre AIR", "Post AIR"][section]
+        return None
+
+
+class DualVoltagesPlot(TimeSeriesPlotWidget):
+    def __init__(self, parent=None):
+        super().__init__(
+            title=Strings.TITLE_PACK_VOLTAGE,
+            unit="V",
+            series_count=2,
+            label_formatter_callback=lambda i: ["Pre AIR", "Post AIR"][i],
+            empty_text="No voltage data",
+            colors=[Theme.SIGNAL_COLORS["pack_voltage_pre_air"], Theme.SIGNAL_COLORS["pack_voltage_post_air"]]
+        )
+        self.setMinimumHeight(Theme.H_SIZE_S)
+        self.setMinimumWidth(Theme.W_SIZE_S)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.stats_lbl.hide()
+
+    def _create_table_model(self):
+        return DualVoltagesTableModel()
+
+
 class MetricsScreen(QFrame):
     def __init__(self, volt_mapping, temp_mapping, parent=None):
         super().__init__(parent)
@@ -80,27 +138,8 @@ class MetricsScreen(QFrame):
         section_a_layout.setSpacing(10)
 
         voltage_row = ResponsiveGrid(min_item_width=Theme.W_SIZE_S + 20)
-        self.pack_voltage_plot = SimpleTimeSeriesPlot(
-            title=Strings.TITLE_PACK_VOLTAGE,
-            unit="V",
-            label_formatter_callback=lambda i: Strings.LBL_PACK_VOLTAGE,
-            empty_text="No voltage data"
-        )
-        self.pack_voltage_plot.setMinimumHeight(Theme.H_SIZE_S)
-        self.pack_voltage_plot.setMinimumWidth(Theme.W_SIZE_S)
-        self.pack_voltage_plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.pack_voltage_plot = DualVoltagesPlot()
         voltage_row.add_item(self.pack_voltage_plot)
-
-        self.pack_voltage_post_air_plot = SimpleTimeSeriesPlot(
-            title=Strings.TITLE_PACK_VOLTAGE_POST_AIR,
-            unit="V",
-            label_formatter_callback=lambda i: Strings.LBL_PACK_VOLTAGE_POST_AIR,
-            empty_text="No post-AIR voltage data"
-        )
-        self.pack_voltage_post_air_plot.setMinimumHeight(Theme.H_SIZE_S)
-        self.pack_voltage_post_air_plot.setMinimumWidth(Theme.W_SIZE_S)
-        self.pack_voltage_post_air_plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        voltage_row.add_item(self.pack_voltage_post_air_plot)
 
         section_a_layout.addWidget(voltage_row)
 
@@ -109,7 +148,8 @@ class MetricsScreen(QFrame):
             title=Strings.TITLE_PACK_CURRENT,
             unit="A",
             label_formatter_callback=lambda i: Strings.LBL_PACK_CURRENT,
-            empty_text="No current data"
+            empty_text="No current data",
+            colors=[Theme.SIGNAL_COLORS["pack_current"]]
         )
         self.pack_current_plot.setMinimumHeight(Theme.H_SIZE_S)
         self.pack_current_plot.setMinimumWidth(Theme.W_SIZE_S)
@@ -120,7 +160,8 @@ class MetricsScreen(QFrame):
             title=Strings.TITLE_SOC,
             unit="%",
             label_formatter_callback=lambda i: "SoC",
-            empty_text="No SoC data"
+            empty_text="No SoC data",
+            colors=[Theme.SIGNAL_COLORS["soc"]]
         )
         self.soc_plot.setMinimumHeight(Theme.H_SIZE_S)
         self.soc_plot.setMinimumWidth(Theme.W_SIZE_S)
@@ -237,8 +278,7 @@ class MetricsScreen(QFrame):
         if telemetry.HasField("pack_state"):
             ps = telemetry.pack_state
             self.soc_plot.add_point(current_time, [ps.soc])
-            self.pack_voltage_plot.add_point(current_time, [ps.voltage])
-            self.pack_voltage_post_air_plot.add_point(current_time, [ps.post_air_voltage])
+            self.pack_voltage_plot.add_point(current_time, [ps.voltage, ps.post_air_voltage])
             self.pack_current_plot.add_point(current_time, [ps.current])
 
         if telemetry.HasField("status"):

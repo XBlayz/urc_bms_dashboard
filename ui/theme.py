@@ -325,5 +325,16 @@ class Theme:
         "NONE": "#444444",
     }
 
+    SIGNAL_COLORS = {
+        "pack_voltage_pre_air": "#00AAFF",
+        "pack_voltage_post_air": "#FFAA00",
+        "pack_current": "#00FF00",
+        "soc": "#AA00FF",
+        "actuator_air_pos": "#00FF00",
+        "actuator_air_neg": "#FF4444",
+        "actuator_pre_charge": "#FFAA00",
+        "actuator_sdc": "#00AAFF",
+    }
+
 
 CurrentTheme = Theme

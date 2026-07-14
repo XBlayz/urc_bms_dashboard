@@ -19,13 +19,14 @@ class ToggleButton(QPushButton):
 class TimeSeriesPlotWidget(QFrame):
     sig_maximize_toggled = pyqtSignal(bool)
 
-    def __init__(self, title, unit, series_count, label_formatter_callback, empty_text=Strings.EMPTY_CELL):
+    def __init__(self, title, unit, series_count, label_formatter_callback, empty_text=Strings.EMPTY_CELL, colors=None):
         super().__init__()
         self.title_text = title
         self.unit = unit
         self.series_count = series_count
         self.label_formatter = label_formatter_callback
         self.empty_text = empty_text
+        self._signal_colors = colors
 
         self.curves = []
         self.colors = []
@@ -139,7 +140,10 @@ class TimeSeriesPlotWidget(QFrame):
 
         # Initialize curves
         for i in range(self.series_count):
-            color = np.random.randint(50, 255, 3).tolist()
+            if self._signal_colors and i < len(self._signal_colors):
+                color = self._signal_colors[i]
+            else:
+                color = np.random.randint(50, 255, 3).tolist()
             self.colors.append(color)
             pen = pg.mkPen(color=color, width=1)
             curve = self.plot_widget.plot(pen=pen, autoDownsample=True, clipToView=True)

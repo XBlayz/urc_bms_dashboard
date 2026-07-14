@@ -54,13 +54,14 @@ class SimpleTableModel(QAbstractTableModel):
 
 
 class SimpleTimeSeriesPlot(TimeSeriesPlotWidget):
-    def __init__(self, title, unit, label_formatter_callback, empty_text=Strings.EMPTY_CELL):
+    def __init__(self, title, unit, label_formatter_callback, empty_text=Strings.EMPTY_CELL, colors=None):
         super().__init__(
             title=title,
             unit=unit,
             series_count=1,
             label_formatter_callback=label_formatter_callback,
-            empty_text=empty_text
+            empty_text=empty_text,
+            colors=colors
         )
 
     def _create_table_model(self):
@@ -106,31 +107,49 @@ class EnumPlot(TimeSeriesPlotWidget):
         if self.is_paused and not force:
             return
 
-        # Map enum values to Y positions and colors
-        values = data_2d[:len(x_view), 0]
-        unique_states = sorted(set(values.astype(int)))
+        values = data_2d[:len(x_view), 0].astype(int)
+        if len(values) == 0:
+            return
+
+        unique_states = sorted(set(values))
         state_to_y = {s: i for i, s in enumerate(unique_states)}
 
-        y_positions = np.array([state_to_y.get(int(v), 0) for v in values])
-        colors = []
-        for v in values:
-            state_name = self.enum_map.get(int(v), "NONE")
-            color = Theme.STATE_COLORS.get(state_name, "#444444")
-            colors.append(color)
+        # Detect state change points
+        change_points = [0]
+        for i in range(1, len(values)):
+            if values[i] != values[i - 1]:
+                change_points.append(i)
+        change_points.append(len(values))
 
-        # Clear previous scatter
-        if hasattr(self, '_scatter'):
-            self.plot_widget.removeItem(self._scatter)
+        # Clear previous segments
+        if hasattr(self, '_segments'):
+            for item in self._segments:
+                self.plot_widget.removeItem(item)
+        self._segments = []
 
-        # Create scatter with colored points
-        spots = []
-        for i in range(len(x_view)):
-            spots.append(
-                {'pos': (x_view[i], y_positions[i]), 'size': 8,
-                 'brush': pg.mkBrush(colors[i]), 'pen': pg.mkPen(None)}
-            )
-        self._scatter = pg.ScatterPlotItem(spots=spots)
-        self.plot_widget.addItem(self._scatter)
+        # Build one step segment per constant-state run
+        for i in range(len(change_points) - 1):
+            start = change_points[i]
+            end = change_points[i + 1]
+            if end <= start:
+                continue
+
+            state = values[start]
+            state_name = self.enum_map.get(state, "NONE")
+            color = Theme.STATE_COLORS.get(state_name, "#888888")
+            y_val = state_to_y.get(state, 0)
+
+            seg_x = x_view[start:end]
+            x_step = np.empty(len(seg_x) + 1, dtype=seg_x.dtype)
+            x_step[:-1] = seg_x
+            if end < len(x_view):
+                x_step[-1] = x_view[end]
+            else:
+                x_step[-1] = seg_x[-1] + 1.0
+            y_step = np.full(len(seg_x), y_val)
+
+            curve = self.plot_widget.plot(x_step, y_step, stepMode=True, pen=pg.mkPen(color, width=2))
+            self._segments.append(curve)
 
         # Update Y axis labels
         y_ticks = [(i, self.enum_map.get(s, str(s))) for s, i in state_to_y.items()]
@@ -145,7 +164,7 @@ class EnumPlot(TimeSeriesPlotWidget):
             self.plot_widget.setYRange(-y_padding, len(unique_states) - 1 + y_padding)
 
         # Update stats with current state
-        current_state = int(values[-1]) if len(values) > 0 else -1
+        current_state = int(values[-1])
         state_name = self.enum_map.get(current_state, "--")
         self.stats_lbl.setText(f"STATE: {state_name}")
 
@@ -155,6 +174,8 @@ class EnumPlot(TimeSeriesPlotWidget):
 
 class StackedBoolPlot(QFrame):
     sig_maximize_toggled = pyqtSignal(bool)
+    BAND_HEIGHT = 1.0
+    PADDING = 0.3
 
     def __init__(self, title, series_labels, empty_text=Strings.EMPTY_CELL):
         super().__init__()
@@ -166,8 +187,10 @@ class StackedBoolPlot(QFrame):
         self.curves = []
         self.fill_items = []
         self.colors = [
-            "#00FF00", "#00AAFF", "#FFAA00", "#FF00FF",
-            "#AA00FF", "#FF8800", "#00FFAA"
+            Theme.SIGNAL_COLORS.get("actuator_air_pos", "#00FF00"),
+            Theme.SIGNAL_COLORS.get("actuator_air_neg", "#FF4444"),
+            Theme.SIGNAL_COLORS.get("actuator_pre_charge", "#FFAA00"),
+            Theme.SIGNAL_COLORS.get("actuator_sdc", "#00AAFF"),
         ]
 
         self.hr_max = 1200
@@ -253,7 +276,10 @@ class StackedBoolPlot(QFrame):
             curve = self.plot_widget.plot(pen=pen, stepMode=True)
             self.curves.append(curve)
 
-        y_ticks = [(i, label) for i, label in enumerate(self.series_labels)]
+        y_ticks = [
+            (i * (self.BAND_HEIGHT + self.PADDING) + self.BAND_HEIGHT / 2, label)
+            for i, label in enumerate(self.series_labels)
+        ]
         self.plot_widget.getAxis('left').setTicks([y_ticks])
 
         layout.addWidget(self.plot_widget, stretch=1)
@@ -312,15 +338,10 @@ class StackedBoolPlot(QFrame):
         if self.is_paused and not force:
             return
 
-        # Compute stacked cumulative sums
-        cumsum = np.cumsum(data_2d[:len(x_view), :], axis=1)
-
         for i in range(self.series_count):
-            upper = cumsum[:, i]
-            if i == 0:
-                lower = np.zeros(len(x_view))
-            else:
-                lower = cumsum[:, i - 1]
+            base = i * (self.BAND_HEIGHT + self.PADDING)
+            lower = np.full(len(x_view), base)
+            upper = lower + data_2d[:len(x_view), i] * self.BAND_HEIGHT
 
             # Update top curve (stepMode requires len(X) == len(Y) + 1)
             if len(x_view) > 0:
@@ -331,26 +352,29 @@ class StackedBoolPlot(QFrame):
                 x_step = x_view
             self.curves[i].setData(x_step, upper, stepMode=True)
 
-            # Build fill path between upper and lower
+            # Build square-step fill path
             path = QPainterPath()
             n = len(x_view)
             if n == 0:
                 continue
 
-            path.moveTo(x_view[0], lower[0])
-            for j in range(n):
-                path.lineTo(x_view[j], lower[j])
-            for j in range(n - 1, -1, -1):
-                path.lineTo(x_view[j], upper[j])
+            path.moveTo(x_step[0], base)
+            path.lineTo(x_step[0], upper[0])
+            for j in range(len(x_step) - 1):
+                path.lineTo(x_step[j + 1], upper[j])
+                if j + 1 < len(upper):
+                    path.lineTo(x_step[j + 1], upper[j + 1])
+            path.lineTo(x_step[-1], base)
             path.closeSubpath()
-
             self.fill_items[i].setPath(path)
 
         current_time = x_view[-1]
         window_size_seconds = 10
         min_x = max(0, current_time - window_size_seconds)
         self.plot_widget.setXRange(min_x, max(window_size_seconds, current_time))
-        self.plot_widget.setYRange(-0.2, self.series_count + 0.2)
+
+        max_y = self.series_count * self.BAND_HEIGHT + (self.series_count - 1) * self.PADDING
+        self.plot_widget.setYRange(-0.2, max_y + 0.2)
 
         active_count = np.sum(data_2d[len(x_view) - 1, :])
         self.stats_lbl.setText(f"ACTIVE: {int(active_count)}/{self.series_count}")
