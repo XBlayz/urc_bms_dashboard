@@ -394,6 +394,8 @@ class StackedBoolPlot(QFrame):
 
 
 class BarChartWidget(QFrame):
+    sig_maximize_toggled = pyqtSignal(bool)
+
     def __init__(self, title, unit, bar_count, label_formatter_callback, empty_text=Strings.EMPTY_CELL):
         super().__init__()
         self.title_text = title
@@ -437,6 +439,14 @@ class BarChartWidget(QFrame):
         self.reset_btn.setStyleSheet(Theme.toggle_button())
         self.reset_btn.clicked.connect(self.reset_data)
         header_layout.addWidget(self.reset_btn)
+
+        self.maximize_cb = QPushButton(Strings.BTN_MAXIMIZE)
+        self.maximize_cb.setCheckable(True)
+        self.maximize_cb.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.maximize_cb.setFixedHeight(22)
+        self.maximize_cb.setStyleSheet(Theme.toggle_button())
+        self.maximize_cb.toggled.connect(self._on_maximize_toggled)
+        header_layout.addWidget(self.maximize_cb)
 
         header_layout.addStretch()
 
@@ -541,3 +551,6 @@ class BarChartWidget(QFrame):
     def reset_data(self):
         self.current_data = np.zeros(self.bar_count, dtype=np.float64)
         self._render_bars()
+
+    def _on_maximize_toggled(self, checked):
+        self.sig_maximize_toggled.emit(checked)
