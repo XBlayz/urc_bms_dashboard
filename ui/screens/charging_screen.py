@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QMessageBox, QSizePolicy
+    QLineEdit, QMessageBox, QWidget, QSizePolicy, QGridLayout
 )
 from PyQt6.QtCore import Qt
 
@@ -10,20 +10,63 @@ from ui.strings import Strings
 from ui.theme import CurrentTheme as Theme
 
 
+class ResponsiveGrid(QWidget):
+    def __init__(self, min_item_width=400, parent=None):
+        super().__init__(parent)
+        self._items = []
+        self._min_item_width = min_item_width
+        self._cols = 1
+        self._grid = QGridLayout(self)
+        self._grid.setContentsMargins(0, 0, 0, 0)
+        self._grid.setSpacing(10)
+
+    def add_item(self, widget):
+        self._items.append(widget)
+        self._grid.addWidget(widget, 0, len(self._items) - 1)
+        self._relayout()
+        self._update_cols(self.width())
+
+    def resizeEvent(self, event): # pyright: ignore[reportIncompatibleMethodOverride]
+        super().resizeEvent(event)
+        self._update_cols(self.width())
+
+    def _update_cols(self, width):
+        if width <= 0:
+            if self._cols != 1:
+                self._cols = 1
+                self._relayout()
+            return
+        new_cols = max(1, width // self._min_item_width)
+        if new_cols != self._cols:
+            self._cols = new_cols
+            self._relayout()
+
+    def _relayout(self):
+        for i, widget in enumerate(self._items):
+            row = i // self._cols
+            col = i % self._cols
+            self._grid.addWidget(widget, row, col)
+
+
 class ChargingScreen(QFrame):
     def __init__(self, command_sender, parent=None):
         super().__init__(parent)
         self.command_sender = command_sender
         self.charge_start_time = None
+        self._maximized_widget = None
+        self._normal_widgets = []
         self.init_ui()
 
     def init_ui(self):
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        layout = QHBoxLayout(self)
+        layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
-        # Info panel (left)
+        # Top row: info panel | controls panel
+        top_row = QHBoxLayout()
+        top_row.setSpacing(15)
+
         info_panel = QFrame()
         info_panel.setStyleSheet(Theme.charging_control())
         info_panel.setMinimumWidth(320)
@@ -76,54 +119,62 @@ class ChargingScreen(QFrame):
 
         info_layout.addSpacing(10)
 
-        # SoC history
+        history_row = ResponsiveGrid(min_item_width=350)
         self.soc_plot = SimpleTimeSeriesPlot(
             title=Strings.LBL_SOC_HISTORY,
             unit="%",
             label_formatter_callback=lambda i: "SoC",
-            empty_text="No SoC history"
+            empty_text="No SoC history",
+            colors=[Theme.SIGNAL_COLORS["soc"]]
         )
-        self.soc_plot.setMinimumHeight(150)
-        self.soc_plot.setMinimumWidth(250)
+        self.soc_plot.setMinimumHeight(200)
+        self.soc_plot.setMinimumWidth(300)
         self.soc_plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        info_layout.addWidget(self.soc_plot, stretch=1)
+        self.soc_plot.sig_maximize_toggled.connect(self._on_plot_maximize)
+        history_row.add_item(self.soc_plot)
 
         # Voltage history
         self.voltage_plot = SimpleTimeSeriesPlot(
             title=Strings.LBL_VOLTAGE_HISTORY,
             unit="V",
             label_formatter_callback=lambda i: Strings.LBL_CHARGE_VOLTAGE,
-            empty_text="No voltage history"
+            empty_text="No voltage history",
+            colors=[Theme.SIGNAL_COLORS["pack_voltage_pre_air"]]
         )
-        self.voltage_plot.setMinimumHeight(150)
-        self.voltage_plot.setMinimumWidth(250)
+        self.voltage_plot.setMinimumHeight(200)
+        self.voltage_plot.setMinimumWidth(300)
         self.voltage_plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        info_layout.addWidget(self.voltage_plot, stretch=1)
+        self.voltage_plot.sig_maximize_toggled.connect(self._on_plot_maximize)
+        history_row.add_item(self.voltage_plot)
 
         # Current history
         self.current_plot = SimpleTimeSeriesPlot(
             title=Strings.LBL_CURRENT_HISTORY,
             unit="A",
             label_formatter_callback=lambda i: Strings.LBL_CHARGE_CURRENT,
-            empty_text="No current history"
+            empty_text="No current history",
+            colors=[Theme.SIGNAL_COLORS["pack_current"]]
         )
-        self.current_plot.setMinimumHeight(150)
-        self.current_plot.setMinimumWidth(250)
+        self.current_plot.setMinimumHeight(200)
+        self.current_plot.setMinimumWidth(300)
         self.current_plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        info_layout.addWidget(self.current_plot, stretch=1)
+        self.current_plot.sig_maximize_toggled.connect(self._on_plot_maximize)
+        history_row.add_item(self.current_plot)
+
+        info_layout.addWidget(history_row, stretch=1)
 
         # Balancing placeholder
         balancing_lbl = QLabel(Strings.LBL_BALANCING + ": --")
         balancing_lbl.setStyleSheet("color: #888888; font-size: 12px;")
         info_layout.addWidget(balancing_lbl)
 
-        layout.addWidget(info_panel, stretch=2)
+        top_row.addWidget(info_panel, stretch=2)
 
         # Controls panel (right)
         controls_panel = QFrame()
         controls_panel.setStyleSheet(Theme.charging_control())
         controls_panel.setMinimumWidth(280)
-        controls_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        controls_panel.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         controls_layout = QVBoxLayout(controls_panel)
         controls_layout.setContentsMargins(15, 15, 15, 15)
         controls_layout.setSpacing(15)
@@ -179,7 +230,44 @@ class ChargingScreen(QFrame):
         controls_layout.addWidget(self.feedback_lbl)
 
         controls_layout.addStretch()
-        layout.addWidget(controls_panel, stretch=1)
+        top_row.addWidget(controls_panel, stretch=1)
+
+        layout.addLayout(top_row, stretch=1)
+
+        # Store references for maximize/restore
+        self._normal_widgets = [info_panel, controls_panel]
+        self._max_page = None
+        self._max_layout = None
+
+    def _on_plot_maximize(self, checked):
+        sender = self.sender()
+        if not sender:
+            return
+        if checked:
+            self._maximize_plot(sender)
+        else:
+            self._restore_normal()
+
+    def _maximize_plot(self, plot_widget):
+        self._maximized_widget = plot_widget
+        for w in self._normal_widgets:
+            w.hide()
+        if self._max_page is None:
+            self._max_page = QWidget()
+            self._max_layout = QVBoxLayout(self._max_page)
+            self._max_layout.setContentsMargins(0, 0, 0, 0)
+            self.layout().addWidget(self._max_page)
+        self._max_layout.addWidget(plot_widget)
+        self._max_page.show()
+
+    def _restore_normal(self):
+        if self._maximized_widget and self._max_layout is not None:
+            self._max_layout.removeWidget(self._maximized_widget)
+            self._maximized_widget = None
+        if self._max_page is not None:
+            self._max_page.hide()
+        for w in self._normal_widgets:
+            w.show()
 
     def on_start_stop_clicked(self):
         if self.start_stop_btn.text() == Strings.BTN_START_CHARGING:
