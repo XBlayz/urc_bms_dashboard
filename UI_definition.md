@@ -1,156 +1,236 @@
-# Main structure
-La struttura principale della UI è configurata da due zone:
-- Pannello laterale
-- Schermata principale
+---
+lang: it
+---
 
-## Pannello laterale
-Il pannello laterale è configurato da 4 zone posiziona verticalmente una sopra l'altra:
+# Contesto & Terminologia
+Questa app è relativa a un **sistema di diagnostica** per un _sistema BMS (Battery Management System)_ custom.
 
-### Logo
-Logo del progetto.
+## Contesto dell'applicazione
+Esso è costruito per interfacciarsi con il _microcontrollore_ (STM32) tramite _porta seriale_ (USB UART).
+L'applicazione legge i **segnali** che il microcontrollore produce e li visualizza nell'**interfaccia grafica**, gestendo inoltre **comandi** da parte dell'utente.
 
-### Navigazione delle schermate principali
-Bottoni di navigazione per le varie schermate principali.
+## Terminologia
+- I vari **segnali** sono identificati con i _loro nomi_ tra ``...``
+- Le scritte tra `[...]` indicano i **widget** da usare per visualizzare i **segnali** scritti prima (separati da virgole). Eventuali `(...)` danno _informazioni aggiuntive_ per il **widget**. Se il nome del widget è tra ``...`` (es. `[`widget_name`]`), indica un **widget custom**, altrimenti è solo un nome che si riferisce ad un **widget** predefinito generalmente identificato con un nome _generico_ (devi trovare tu un **widget** che consideri più adatto). La scritta `(arr)` dopo il nome di un **segnale** indica che esso è costituito da un **array di valori**.
+- I _layout_ sono strutturati con liste (`- ...`) in caso dell'_ordine verticale_ e tramite `|` in caso dell'_ordine orizzontale_.
 
-### Pannello di stato
-Pannello che mostra lo stato generale del sistema BMS.
-- Stato degli attuatori [`actuator_state`]
-- Stato della FSM (con ultimo stato precedente) [`enum_state`]
-- Uptime [`time_plate`]
-- Numero di faults [...]
-- Tensione di pacco (sia pre che post AIR) 2x[`unit_plate`]
-- Corrente di pacco [`unit_plate`]
-- Stato di carica [`unit_plate`]
-- Stato di potenza (sia in carica che in scarica) 2x[`unit_plate`]
-- Statistiche sulle celle (min, max, avg e delta di tensioni e temperature) 2x[`stat_summary`]
+---
 
-### Pannello di stato della connessione
-Mostra lo stato della connessione con il BMS tramite seriale (#TODO: Aggiungere eventuali statistiche di riferimento dello stato della connessione).
+# Struttura principale della UI
+La struttura principale della UI è suddivisa in _2 zone_:
+1. **Pannello laterale**
+2. **Schermata principale**
+
+La finestra deve essere **ridimensionabile** con dei limiti minimi dettati dalle **dimensioni minime** delle _2 zone_.
+
+## 1. Pannello laterale
+Il **pannello laterale** è configurato da _4 zone_ posiziona _verticalmente una sopra l'altra_:
+1. **Logo**
+2. **Navigazione delle schermate principali**
+3. **Pannello di stato del BMS**
+4. **Pannello di stato della connessione**
+
+Esso **non deve essere scrollabile**, ne in _verticale_ ne in _orizzontale_. I vari componenti devono avere **dimensione fissata** e alla _scalatura della finestra_ lo spazio extra deve essere _distribuito uniformemente_ nel **padding delle varie zone**.
+
+### 1.1. Logo
+Icona dell'applicazione (#TODO: Attualmente _placeholder_).
+
+### 1.2. Navigazione delle schermate principali
+_Colonna di bottoni_ che permettono di **cambiare la schermata principale**.
+
+I bottoni devono essere suddivisi in _4 sezioni_, separati da una _linea_:
+1. `Metrics`
+2. `Charging` e `Override`
+3. `Logs`
+4. `Settings`
+
+### 1.3. Pannello di stato del BMS
+Pannello che mostra lo _stato generale_ del sistema **BMS**.
+
+Esso deve mostrare i seguenti **segnali** nel seguente _layout_:
+- `SoC` [`unit_plate`](Unità %) | `Pack current` [`unit_plate`](Unità A)
+- "Pack voltage" [box]
+  - `DC Link Voltage` [`unit_plate`](Unità V) | `Post AIR Voltage` [`unit_plate`](Unità V)
+- "SoP" [box]
+  - `SoP Discharge` [`unit_plate`](Unità A) | `SoP Charge` [`unit_plate`](Unità A)
+- "Cells stats" [box]
+  - `Cells Voltages`(arr) [`stat_summary`](Min celeste, Max rosso, Avg giallo, Delta default, Unità V) | `Cells Temperatures`(arr) [`stat_summary`](Min celeste, Max rosso, Avg giallo, Delta default, Unità °C)
+- `FSM state` [`enum_state`](Ogni stato deve avere il suo colore associato)
+- "Actuator states" [box]
+  - `SDC` [`actuator_state`](True "Close" rosso, False "Open" verde) | `Pre-charge` [`actuator_state`](True "Close" giallo, False "Open" grigio)
+  - `AIR+` [`actuator_state`](True "Close" rosso, False "Open" grigio) | `AIR-` [`actuator_state`](True "Close" rosso, False "Open" grigio)
+- `Fault counter` [#TODO: Da definire componente]
+- `Uptime` [`time_plate`](Formato `hh:mm:ss`)
+
+### 1.4. Pannello di stato della connessione
+Mostra lo **stato della connessione** con il BMS _tramite seriale_ (#TODO: Aggiungere eventuali statistiche di riferimento dello stato della connessione).
+
+Inoltre mostra se si è in modalità di _debug_ ("Mock") o meno.
 
 
-## Schermata principale
-La schermata principale mostra una delle schermate selezionabili tramite il pannello laterale. Possibilità di inserire delle linee che separano le schemate in sezioni.
+## 2. Schermata principale
+La schermata principale mostra una delle _schermate selezionabili_ tramite il **pannello laterale**.
 
-### 1. Metrics
-Mostra una serie di grafici:
-- SoC nel tempo [`time_series_plot`]
-- Tensioni (pre e post AIR) nel tempo [`time_series_plot`]
-- Corrente di pacco e limiti di carica e scarica nel tempo [`time_series_plot`]
-- Stato della FSM nel tempo [`time_series_plot_enum`]
-- Stato degli attuatori nel tempo [`time_series_plot_stacked_bool`]
-- Statistiche delle tensioni
-  - Tensioni delle varie celle nel tempo [`time_series_plot`]
-  - Istogramma delle tensioni delle varie celle [`bar_chart`]
-- Statistiche delle temperature
-  - Temperatura delle varie celle nel tempo [`time_series_plot`]
-  - Istogramma delle temperature delle varie celle [`bar_chart`]
+Questo deve poter essere **scrollabile** solo in _verticale_ e non in _orizzontale_.
 
-### {Linea separatrice}
+### 2.1. Metrics
+Mostra una **serie di grafici** nel seguente _layout_:
+- `SoC` [`time_series_plot`] | `DC Link Voltage`, `Post AIR Voltage` [`time_series_plot`]
+- `Pack current`, `SoP Discharge`, `SoP Charge` [`time_series_plot`]
+- `FSM state` [`time_series_plot_enum`]
+- `SDC`, `Pre-charge`, `AIR+`, `AIR-` [`time_series_stacked_plot_bool`]
+- `Cells Voltages`(arr) [`time_series_plot`] | `Cells Temperatures`(arr) [`time_series_plot`]
+- `Cells Voltages`(arr) [`bar_chart`] | `Cells Temperatures`(arr) [`bar_chart`]
 
-### 2. Charging
-Mostra varie informazioni relative alla ricarica e alla sua configurazione.
-- Stato della carica (se in carica o meno) [`enum_state`]
-- Durata della carica e stima del tempo di carica rimanente 2x[`time_plate`]
-- Tensione del pacco (pre AIR) [`unit_plate`]
-- Corrente di pacco [`unit_plate`]
-- Stato di carica [`unit_plate`]
-- Grafici temporali del SoC e tensione (pre AIR) [`time_series_plot`]
-- Grafico temporale della corrente di pacco [`time_series_plot`]
-- Informazioni sullo stato del bilanciamento (#TODO: Da definire bene)
-- Pulsante di avvio e arresto della ricarica (toggle + pop-up di conferma dell'avvio con riepilogo dei parametri di ricarica)
-- Field di configurazione della tensione di ricarica
-- Field di configurazione della corrente di ricarica
-- Tasto di invio dei parametri di ricarica (con feedback della conferma)
+Ogni grafico deve avere una **dimensione minima**, sia in _larghezza_ che in _altezza_.
 
-### 3. Override
-#TODO:
+### 2.2. Charging
+#TODO: Da definire
 
-### {Linea separatrice}
+### 2.3. Override
+#TODO: Da definire
 
-### 4. Logs
-#TODO:
+### 2.4. Logs
+#TODO: Da definire
 
-### {Linea separatrice}
-
-### 5. Export
-#TODO:
+### 2.5. Export
+#TODO: Da definire
 
 ---
 
 # Widgets
-Ogni componente istanziato viene definito come un widget.
+Ci sono vari **componenti custom** che compongono la i vari elementi della _UI_. Essi sono suddivisi nelle seguenti categorie:
+1. **Plates**
+2. **Plots**
 
-## Plate
-Le **Plate** sono delle targette che mostrano dei valori istantanei singoli.
+## 1. Plates
+Le **plates** sono delle _targette_ che mostrano dei valori _istantanei_.
 
-### Enum state `enum_state`
-Mostra un segnale com un enum, associando ad ogni valore una lable e un colore.
+Ogni tipologia di **plate** ha un _titolo_.
 
-### Unit plate `unit_plate`
-Mostra un valore con la sua didascalia e l'unita di misura di visualizzazione.
-- Lable del segnale
-- Eventuale colore opzionale (anche definibile sulla base del valore)
-- Unita di misura
+### 1.1. Enum state [`enum_state`]
+Interpreta un **segnale** come un **enum**, associando a ogni valore una _label_ e un _colore_ (default #FFFFFF).
 
-### Actuator state `actuator_state`
-Mostra lo stato di un'attuatore mostrando lo stato booleano.
-- Lable del segnale
-- Lable custom per definire lo stato booleano (con valori di default)
-- Colori opzionali sulla base dello stato (con valori di default)
+### 1.2. Unit plate [`unit_plate`]
+Mostra un **segnale** con un'_unita di misura_, una _formattazione specifica_ (default `:.2f`) e un _colore_ (default #FFFFFF).
 
-### Statistic summory `stat_summary`
-Mostra valori statistici di riassunto relativi a vari dati.
-- Valore minimo
-- Valore massimo
-- Valore medio
-- Differenza tra il valore massimo e il valore minimo
+### 1.3. Actuator state [`actuator_state`]
+Mostra lo un **segnale** come un **valore booleano**, associando a ogni valore una _label_ (default "True" e "False") e un _colore_ (default #FFFFFF e #808080).
 
-Ogni stat può avere un'unità di misura e un colore opzionale.
+### 1.4. Time plate [`time_plate`]
+Mostra un **segnale** come un **valore temporale** con una _formattazione specifica_ (default `hh:mm:ss`) e un _colore_ (default #FFFFFF).
 
-### Time plate `time_plate`
-Mostra un valore temporale con la sua didascalia in un formato umanamente leggibile (es. `hh:mm:ss`). Se il segnale non è presente mostra come valore di default qualcosa di simile a `--:--:--` (in base al formato specificato).
+### 1.5. Stat summary [`stat_summary`]
+Mostra delle _statistiche istantanee_ relative a una **serie di segnali**, esse sono:
+- Valore **minimo** (MIN)
+- Valore **massimo** (MAX)
+- Valore **medio** (AVG)
+- **Differenza** tra il valore _massimo_ e il valore _minimo_ (DELTA)
 
+Ogni **statistica** ha un'_unita di misura_, una _formattazione specifica_ (default `:.2f`) e un _colore_ (default #FFFFFF).
 
-## Grafici
-Ogni grafico deve presentare le seguenti funzioni:
-- La possibilità di massimizzare il grafico per tutta la schermata principale o tutta la finestra
-- Pausa l'aggiornamento della visualizzazione dei nuovi dati ricevuti fino ad un nuovo click del pulsante
+## 2. Plots
+I **plots** sono dei _grafi_ che mostrano segnali con visualizzazioni specifiche.
 
-### Grafici temporali `time_series_plot`
-Plotta uno o più segnali nel tempo. Deve avere le seguenti funzioni:
-- Cursore che mostra il valore nell'istante di tempo identificato dalla posizione del mouse sul grafico
-- Zoom in e out con la rottelina del mouse
-- Spostamento del grafico cliccando e trascinando il mouse
-- Autoscroll che segue l'ultimo valore ricevuto (si deve disabilitare automaticamente se il grafico viene spostato manualmente)
-- Visualizzazione tabulare (istante di tempo, valori dei vari grafici) come pulsate toggle
-- Pulsante di clear
-- Legenda dei vari segnali con possibilità di abilitare o disabilitare la visualizzazione do ogni singolo segnale
+Ogni tipologia di **plots** ha un _titolo_.
 
-Inolte tutti i grafici temporali raggrupapti tra loro devono poter fare (widget `plot_group`):
-- Pulsate di lock del sync temporale, abilita o disabilita la vilualizzazione degli stessi intervalli temporali
-- Pulsante di clear globale per il gruppo
+Ogni tipologia di **plots** deve presentare almeno le seguenti funzioni:
+- Un _tasto toggle_ che permettere di **massimizzare** il grafico per l'intera porzione di **Schermata principale** _visibile dalla finestra_.
+- Un _tasto toggle_ che permetta di **mettere in pausa** l'aggiornamento della visualizzazione dei nuovi dati ricevuti.
 
-Feature opzionali abilitabili:
-- Statistiche temporali della finestra di visualizzazione (min, max, avg e delta)
-- Statistiche tra vari segnali (min, max, avg e delta)
-- Selezione di un singolo segnale da visualizzare con l'ultimo valore istantaneo ricevuto e valore del cursore in basso a grafico come plate
+### 2.1. Time series plot [`time_series_plot`]
+Esso _plotta_ **uno o più segnali** nel tempo.
 
-#### Variante ENUM `time_series_plot_enum`
-Invece di mostrare valori continui mostra un'enumerazione di valori (ad esempio 1, 2, 3, 4, 5) con la possibilità di associare una lable e un colore ad ogni valore. Lo zoom verticale é bloccato.
+Inoltre presenta le seguenti _caratteristiche_:
+- **Autoscroll**: esso **scrolla automaticamente** una _finestra temporale_ con **scalatura automatica** dell'_asse Y_.
+  - La **dimensione** della _finestra temporale_ può essere modificabile tramite uno **slider** a _scomparsa_.
+  - Lo _scroll temporale_ è **globale** per tutti i grafici _temporali_.
+- **Manual move**: _selezionando_ il grafico e _trascinando_ il mouse (stato **sinistro** _mantenuto premuto_) si può **spostare** il grafico
+  - L'**autoscroll** viene **disattivato** _automaticamente_.
+- **Zoom**: _selezionando_ il grafico e _muovendo la rottelina_ del mouse si può **zoomare** il grafico (disattivando automaticamente l'**autoscroll**).
+  - L'**autoscroll** viene **disattivato** _automaticamente_.
+- **Fitting automatico**: 3 tasti che permettono di **fittare automaticamente** i valori massimi e minimi.
+  - _Fitting asse Y_ permette di **fittare** l'asse Y.
+  - _Fitting asse X_ permette di **fittare** l'asse X.
+  - _Fitting asse X e Y_ permette di **fittare** entrambi gli assi.
+- **Legenda dei segnali**: permette di **visualizzare** e **nascondere** i vari segnali cliccando sulle loro _label_.
+  - Le **label** dei segnali hanno lo stesso _colore_ dei relativi grafici.
+  - Tasto per **selezionare** _tutti i segnali_.
+  - Tasto per **deselezionare** _tutti i segnali_.
+- **Pulsante di clear**: permette di **svuotare** il grafico.
+- **Visualizzazione tabulare**: permette di **visualizzare** i valori nella _finestra temporale selezionata_ in formato **tabulare**.
+  - I vari **segnali** sono mostrati sulle righe, mentre l'**istante di tempo** sulle colonne.
+  - Possibilità di **scrollare** la _finestra temporale_ orizzontalmente.
+  - Le **label** dei segnali hanno lo stesso _colore_ dei relativi grafici.
+- **Cursor**: _hovering_ con il mouse su un **plot** mostra un _cursore_, linea verticale tratteggiata grigio chiara semi trasparente.
+  - Mostra il **valore** dei **segnali** _visibili_ nell'istante di tempo identificato dalla posizione del cursore, con una piccola _box_ posizionata all'**intersezione tra il cursore e il grafico relativo**.
+  - Il cursore **scompare** se il mouse non è in _hovering_ sul **plot**.
+  - #TODO: Misurazioni delta e intervalli
+- **Signal Highlighting**: _cliccando_ sul **grafico relativo a un segnale** esso viene evidenziato, rendendo gli altri grafici _semi trasparenti_.
+  - La _label_ del segnale evidenziato viene _evidenziata_ anche nella **legenda**.
 
-#### Variante STACKED BOOL `time_series_plot_stacked_bool`
-Mostra uno o più segnali booleani uno stopra l'altro, mostrano solo una line ase il valore è false, o una line più alta con la sua are sottega riempita dal colore del segnale in trasparenza se il valore é true (l'are deve fermarsi prima dell'inizio del prossimo stacked plot inferiore). Tutti i grafici condividono la stessa asse temporale e lo zoom verticale è bloccato. Non viene mostrata alcuna legenda, invece mostra direttamente sull'asse Y inserisci le lable dei vari segnali.
+Sono presenti anche _funzioni opzionali_ (abilitate solo se esplicitamente richieste):
+- **Temporal statistics**: mostra **statistiche temporali** dei vari **segnali** _visibili_.
+  - Minimo, Massimo, Media, Delta.
+  - In caso di _segnali multipli_ visibili esse vengono visualizzate solo se un segnale è **selezionato** (Signal Highlighting).
+- **Signal statistics**: mostra **statistiche** tra i vari **segnali** _visibili_.
+  - Minimo, Massimo, Media, Delta.
 
-### Grafici a barre `bar_chart`
-Mostra vari segnali in un grafico a barre che mostra l'ultimo valore istantaneo ricevuto, visualizzato anche numericamente sopra ogni barra.
+#### 2.1.1. Time series plot enum [`time_series_plot_enum`]
+Variante di `time_series_plot` dove si mostra un'**enumerazione** di valori con la possibilità di associare una _label_ e un _colore_ a ogni valore.
 
-Evidenzia i valori massimi e minimi e possibilità di abilitare una linea che mostra il valore medio. Se si passa sopra una barra con il cursore viene mostrata la lable del segnale.
+Esso eredita le funzionalità di `time_series_plot` con le seguenti _modifiche_:
+- Supporta un solo **segnale** (nessuna legenda di conseguenza).
+- Le _label degli stati_ vengono mostrare sull'**asse Y** colorando del _colore specifico_ lo stato **correntemente attivo**, mentre il resto vengono mostrati di colore _grigio semi trasparente_.
+- Il _colore del grafico_ cambia in base al **valore assunto in quella porzione** di tempo.
+- Lo **zoom verticale** è _bloccato_.
+- Pressente solo il tasto di _Fitting asse X_ (_Fitting asse Y_ bloccato).
+- La **visualizzazione tabulare** mostra solo i _punti di transizione_ di stato, ignorando i valori duplicati consecutivi.
+- Il cursore mostra la _label degli stati_ relativo al valore.
+- #TODO: Misurazione cursore intervalli e numeri di transizioni per stato
 
-Possibilità di abilitare tale funzione:
-- Visualizzare il valore numerico del delta tra due segnali selezionati cliccando con il mouse.
-- Pulsate di clear della selezione.
-- Barra selezionata evidenziata lievemente.
-- Cliccare su una barra già selezionata per deselezionarla.
+#### 2.1.2. Time series stacked plot boolean [`time_series_stacked_plot_bool`]
+Variante di `time_series_plot` dove si mostrano **segnali booleani** come una serie di grafici a _onda quadra_ uno sopra l'altro nello stesso plot.
 
-### Grafico spaziale `spatial_plot`
-#TODO:
+Ogni segnale prende una _porzione dell'asse Y_ del plot con i **due stati** (alto true, basso false) distinti dalla _colorazione dell'aria sottesa_ dal grafico in semi trasparente. I vari grafici presentano del _padding_ tra di loro.
+
+Esso eredita le funzionalità di `time_series_plot` con le seguenti _modifiche_:
+- La legenda viene inserita direttamente sull'**asse Y**, di fianco a ogni relativo grafico.
+- Lo **zoom verticale** è _bloccato_.
+- Pressente solo il tasto di _Fitting asse X_ (_Fitting asse Y_ bloccato).
+- La **visualizzazione tabulare** mostra solo i _punti di transizione_ di stato, ignorando i valori duplicati consecutivi.
+- Il cursore mostra la _label associata ai due stati_ relativo al valore (default: `True`, `False`) _colorata_ (default #FFFFFF e #808080).
+    > NOTA: Il colore in base al valore è solo per la label del cursore, il colore del grafico è fissato come in `time_series_plot`.
+- #TODO: Misurazione cursore intervalli e numeri di transizioni per stato
+
+### 2.2. Bar chart [`bar_chart`]
+Esso _plotta_ **una serie di segnali** come **barre** verticali, mostrando l'_ultimo valore istantaneo ricevuto_.
+
+Inoltre presenta le seguenti _caratteristiche_:
+- **Legenda dei segnali**: permette di **visualizzare** e **nascondere** i vari segnali cliccando sulle loro _label_.
+  - Tasto per **selezionare** _tutti i segnali_.
+  - Tasto per **deselezionare** _tutti i segnali_.
+- **Heatmap colors**: le varie barre vengono **colorate** in base al **valore assunto** tramite dei gradienti di colore _heatmap_.
+- **Visualizzazione matriciale**: permette di **visualizzare** i valori dei vari segnali in un formato **matriciale** _customizzabile_.
+  - Possibilità di definire la _dimensione_ della matrice.
+  - Possibilità di definire la _posizione_ sulla matrice dei vari segnali.
+  - Possibilità di avere posizioni _vuote_ nella matrice.
+  - Possibilità di **zoomare** e **scrollare** (sia verticalmente che orizzontalmente).
+  - Le varie posizioni della matrice sono contrassegnate da un _label_ di **riga** e di **colonna** _customizzabili_.
+  - Ogni cella ha il _colore_ relativo alla **heatmap colors**.
+- **Signal statistics**: mostra **statistiche** tra i vari **segnali** _visibili_.
+  - Minimo, Massimo, Media, Delta.
+  - Mostra le statistiche anche sull'istogramma:
+    - _Min_ e _Max_ **evidenziando i bordi** della barra relativa con i colori celeste (min) e rosso (max).
+    - _Avg_ crea una **riga tratteggiata** gialla al _valore della media_.
+    - _Delta_ crea una **barretta esterna al grafico** (a sinistra) di colore grigio che _inizia da valore minimo_ e _finisce al valore massimo_.
+
+---
+
+# Struttura delle cartelle
+- `data\`: Gestione della lettura dei dati da serial port o mock per debugging.
+  - ...
+- `ui\`: Gestione dell'interfaccia utente.
+  - `screens\`: Schermate principali.
+  - `widgets\`: Elementi custom dell'interfaccia grafica.
+  - ...
