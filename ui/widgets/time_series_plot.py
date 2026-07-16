@@ -70,7 +70,6 @@ class TimeSeriesPlotWidget(PlotFrameBase):
         self.plot_widget.getAxis('bottom').setTextPen(Theme.PG_AXIS_TEXT)
         self.plot_widget.getAxis('left').setTextPen(Theme.PG_AXIS_TEXT)
         self.plot_widget.hideButtons()
-        self.plot_widget.setMenuEnabled(False)
         # Mouse stays enabled so native pyqtgraph drag-pan/wheel-zoom work; autoscroll
         # is disengaged reactively via sigRangeChangedManually below.
         self.plot_widget.setMouseEnabled(x=True, y=self._y_zoom_enabled)

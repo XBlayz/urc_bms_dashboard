@@ -206,7 +206,6 @@ class StackedBoolPlot(PlotFrameBase):
         self.plot_widget.getAxis('bottom').setTextPen(Theme.PG_AXIS_TEXT)
         self.plot_widget.getAxis('left').setTextPen(Theme.PG_AXIS_TEXT)
         self.plot_widget.hideButtons()
-        self.plot_widget.setMenuEnabled(False)
         self.plot_widget.setMouseEnabled(x=True, y=False)
         self.plot_widget.getViewBox().sigRangeChangedManually.connect(self._on_manual_range_change)
 
@@ -417,7 +416,6 @@ class BarChartWidget(PlotFrameBase):
         self.plot_widget.getAxis('bottom').setTextPen(Theme.PG_AXIS_TEXT)
         self.plot_widget.getAxis('left').setTextPen(Theme.PG_AXIS_TEXT)
         self.plot_widget.hideButtons()
-        self.plot_widget.setMenuEnabled(False)
         self.plot_widget.setMouseEnabled(x=False, y=False)
 
         self.avg_line = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(color="#FFDD00", width=1, style=Qt.PenStyle.DashLine))
