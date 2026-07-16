@@ -95,6 +95,10 @@ class Strings:
     LBL_DISCONNECTED = "DISCONNECTED"
     LBL_MOCK_MODE = "MOCK MODE"
 
+    # sidebar section titles
+    TITLE_STATE_PANEL = "State panel"
+    TITLE_SETTINGS_PANEL = "Settings panel"
+
     # charging screen
     LBL_CHARGING_STATE = "CHARGING STATE"
     LBL_CHARGE_DURATION = "CHARGE DURATION"

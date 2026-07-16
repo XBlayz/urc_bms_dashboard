@@ -93,6 +93,11 @@ class Sidebar(QFrame):
         state_layout = QVBoxLayout()
         state_layout.setSpacing(3)
 
+        state_panel_title = QLabel(Strings.TITLE_STATE_PANEL)
+        state_panel_title.setStyleSheet("color: #888888; font-size: 10px; font-weight: bold; letter-spacing: 1px; padding: 2px 0;")
+        state_panel_title.setMaximumHeight(30)
+        state_layout.addWidget(state_panel_title)
+
         # Grid for paired metrics
         grid = QVBoxLayout()
         grid.setSpacing(2)
@@ -179,12 +184,21 @@ class Sidebar(QFrame):
 
         layout.addLayout(state_layout, stretch=1)
 
+        # Settings panel - no container frame, no scroll
+        settings_layout = QVBoxLayout()
+        settings_layout.setSpacing(3)
+
+        settings_panel_title = QLabel(Strings.TITLE_SETTINGS_PANEL)
+        settings_panel_title.setStyleSheet("color: #888888; font-size: 10px; font-weight: bold; letter-spacing: 1px; padding: 2px 0;")
+        settings_panel_title.setMaximumHeight(30)
+        settings_layout.addWidget(settings_panel_title)
+
         # Global autoscroll window size control (shared by every temporal plot)
         self.window_size_slider = WindowSizeSlider()
         self.window_size_slider.setMaximumHeight(50)
-        state_layout.addWidget(self.window_size_slider)
+        settings_layout.addWidget(self.window_size_slider)
 
-        layout.addLayout(state_layout, stretch=1)
+        layout.addLayout(settings_layout, stretch=1)
 
         # Connection status panel
         conn_panel = QFrame()

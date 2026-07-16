@@ -23,7 +23,7 @@ class DashboardWindow(QMainWindow):
         padding = 40
         self.resize(sidebar_min + Theme.W_SIZE_S + padding, Theme.H_SIZE_S + 400)
         self.setMinimumWidth(sidebar_min + Theme.W_SIZE_S + padding)
-        self.setMinimumHeight(Theme.H_SIZE_S + 400)
+        self.setMinimumHeight(Theme.H_SIZE_S + 450)
         self.setStyleSheet(Theme.main_window())
 
         self.volt_mapping = get_voltage_cell_mapping()
