@@ -2,7 +2,7 @@ import time
 import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
-from data import messages_pb2
+from data.proto import messages_pb2
 
 
 # Realistic-ish state sequence: (state, duration_seconds)
@@ -72,6 +72,16 @@ class MockDataGenerator(QObject):
         else:  # STANDBY, INITIALIZING, NONE
             return False, False, False, False
 
+    def _diagnostic_state_for(self, state, elapsed):
+        # diagnostic_state is treated as a bitmask of currently-active faults
+        # (no bit layout is defined by the firmware yet, this is a v1 placeholder).
+        # In ERROR the mock raises a growing number of fault bits over time so
+        # the fault counter plate has something to demonstrate.
+        if state != 3:
+            return 0
+        active_bits = 1 + int(elapsed) % 3
+        return (1 << active_bits) - 1
+
     def update(self):
         current_time = time.time() - self.start_time
         state = self._current_state(current_time)
@@ -106,8 +116,8 @@ class MockDataGenerator(QObject):
 
         # Diagnostics
         diag = telemetry.diagnostics
-        diag.ams_error = False
-        diag.diagnostic_state = 0
+        diag.diagnostic_state = self._diagnostic_state_for(state, current_time)
+        diag.ams_error = diag.diagnostic_state != 0
 
         # CellVoltages
         cell_voltages = telemetry.cell_voltages

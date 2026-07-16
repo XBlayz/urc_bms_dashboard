@@ -2,8 +2,8 @@ import time
 import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 from data.extif_reader import ExtifUartReader
-from data import messages_pb2
-from data.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
+from data.proto import messages_pb2
+from data.hardware.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
 
 
 class SerialDataGenerator(QObject):
@@ -42,20 +42,16 @@ class SerialDataGenerator(QObject):
         if telemetry.HasField("cell_voltages"):
             device_idx = telemetry.cell_voltages.device_idx
             for i, v in enumerate(telemetry.cell_voltages.voltages):
-                try:
-                    idx = self.volt_mapping.index((device_idx, i))
+                idx = self.volt_mapping.flat_index(device_idx, i)
+                if idx is not None:
                     self.current_volts[idx] = v
-                except ValueError:
-                    pass
 
         if telemetry.HasField("cell_temperatures"):
             device_idx = telemetry.cell_temperatures.device_idx
             for i, t in enumerate(telemetry.cell_temperatures.temperatures):
-                try:
-                    idx = self.temp_mapping.index((device_idx, i))
+                idx = self.temp_mapping.flat_index(device_idx, i)
+                if idx is not None:
                     self.current_temps[idx] = t
-                except ValueError:
-                    pass
 
         # Accumulate non-slice fields into the latest telemetry snapshot
         if telemetry.HasField("status"):

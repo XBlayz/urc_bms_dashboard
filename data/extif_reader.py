@@ -3,7 +3,7 @@ import threading
 import time
 from cobs import cobs
 from PyQt6.QtCore import QObject, pyqtSignal
-from data import messages_pb2
+from data.proto import messages_pb2
 
 extif_crc16_table = [
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7,
@@ -50,7 +50,7 @@ def extif_calculate_crc16(buffer):
     return crc
 
 class ExtifUartReader(QObject):
-    telemetry_received = pyqtSignal(messages_pb2.BmsTelemetry)
+    telemetry_received = pyqtSignal(messages_pb2.BmsTelemetry) # pyright: ignore[reportAttributeAccessIssue]
 
     def __init__(self, port, baudrate=115200):
         super().__init__()
@@ -88,7 +88,7 @@ class ExtifUartReader(QObject):
                 calculated_crc = extif_calculate_crc16(protobuf_payload)
 
                 if received_crc == calculated_crc:
-                    telemetry = messages_pb2.BmsTelemetry()
+                    telemetry = messages_pb2.BmsTelemetry() # pyright: ignore[reportAttributeAccessIssue]
                     telemetry.ParseFromString(protobuf_payload)
                     self.telemetry_received.emit(telemetry)
                 else:
@@ -101,7 +101,7 @@ class ExtifUartReader(QObject):
         while self._running:
             if not self._serial:
                 break
-            
+
             try:
                 if self._serial.in_waiting > 0:
                     data = self._serial.read(self._serial.in_waiting)

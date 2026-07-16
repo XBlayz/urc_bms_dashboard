@@ -3,7 +3,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from cobs import cobs
 
 from data.extif_reader import extif_calculate_crc16
-from data import messages_pb2
+from data.proto import messages_pb2
 
 
 class BmsCommandSender(QObject):
