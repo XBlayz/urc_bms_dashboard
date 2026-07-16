@@ -4,10 +4,10 @@ import pyqtgraph as pg
 from PyQt6.QtWidgets import QApplication
 
 from ui.main_window import DashboardWindow
-from data.mock_generator import MockDataGenerator
-from data.serial_generator import SerialDataGenerator
+from data.generators.mock_generator import MockDataGenerator
+from data.generators.serial_generator import SerialDataGenerator
 from data.bms_command_sender import MockBmsCommandSender, BmsCommandSender
-from data.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
+from data.hardware.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
 
 
 def main():
