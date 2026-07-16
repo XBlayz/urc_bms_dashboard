@@ -1,3 +1,4 @@
+import logging
 import serial
 from PyQt6.QtCore import QObject, pyqtSignal
 from cobs import cobs
@@ -78,13 +79,13 @@ class MockBmsCommandSender(QObject):
     error_occurred = pyqtSignal(str)
 
     def send_charging_start(self, voltage, current):
-        print(f"[MOCK] charging_start: voltage={voltage}, current={current}")
+        logging.info(f"[MOCK] charging_start: voltage={voltage}, current={current}")
         self.command_sent.emit("charging_start", True)
 
     def send_charging_stop(self):
-        print("[MOCK] charging_stop")
+        logging.info("[MOCK] charging_stop")
         self.command_sent.emit("charging_stop", True)
 
     def send_charging_settings(self, voltage, current):
-        print(f"[MOCK] charging_settings: voltage={voltage}, current={current}")
+        logging.info(f"[MOCK] charging_settings: voltage={voltage}, current={current}")
         self.command_sent.emit("charging_settings", True)

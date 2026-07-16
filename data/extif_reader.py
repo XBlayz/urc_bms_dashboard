@@ -1,3 +1,4 @@
+import logging
 import serial
 import threading
 import time
@@ -69,7 +70,7 @@ class ExtifUartReader(QObject):
             self._thread = threading.Thread(target=self._read_loop, daemon=True)
             self._thread.start()
         except Exception as e:
-            print(f"Error opening serial port {self.port}: {e}")
+            logging.error(f"[SERIAL] Error opening serial port {self.port}: {e}")
 
     def stop(self):
         self._running = False
@@ -92,9 +93,9 @@ class ExtifUartReader(QObject):
                     telemetry.ParseFromString(protobuf_payload)
                     self.telemetry_received.emit(telemetry)
                 else:
-                    print(f"CRC mismatch: expected {calculated_crc:04X}, got {received_crc:04X}")
+                    logging.warning(f"[SERIAL] CRC mismatch: expected {calculated_crc:04X}, got {received_crc:04X}")
         except Exception as e:
-            print(f"Error decoding frame: {e}")
+            logging.error(f"[SERIAL] Error decoding frame: {e}")
 
     def _read_loop(self):
         buffer = bytearray()
@@ -117,5 +118,5 @@ class ExtifUartReader(QObject):
                 else:
                     time.sleep(0.01)
             except Exception as e:
-                print(f"Serial read error: {e}")
+                logging.error(f"[SERIAL] Serial read error: {e}")
                 time.sleep(1.0) # Wait before retry
