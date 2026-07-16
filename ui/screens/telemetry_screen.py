@@ -21,6 +21,11 @@ class TelemetryScreen(QFrame, metaclass=_QFrameABCMeta):
         """Called on every telemetry update while this screen is active."""
         raise NotImplementedError
 
+    @abstractmethod
+    def inject_gap(self, timestamp):
+        """Called when connection is lost to inject NaN values and break plot lines."""
+        raise NotImplementedError
+
     def clear_selection(self):
         """Clears any plot selection/cursor state on this screen. No-op by default."""
         pass

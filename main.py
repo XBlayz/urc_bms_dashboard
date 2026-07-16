@@ -41,6 +41,7 @@ def main():
     # Init data generator
     if args.mock:
         generator = MockDataGenerator(volt_count=volt_count, temp_count=temp_count)
+        window.set_connection_status(True)
     else:
         generator = SerialDataGenerator(
             port=args.port,
@@ -50,7 +51,7 @@ def main():
         )
 
     # Wire generator telemetry to window dispatcher
-    generator.bms_state_updated.connect(window.on_telemetry_received)
+    generator.telemetry_frame_updated.connect(window.on_telemetry_received)
 
     generator.start(500)
 

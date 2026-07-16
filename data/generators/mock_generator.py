@@ -3,6 +3,7 @@ import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
 from data.generators.state import BmsState, BmsTelemetryState
+from data.generators.telemetry import TelemetryFrame
 from data.hardware.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
 
 
@@ -22,7 +23,7 @@ STATE_SEQUENCE = [
 ]
 
 class MockDataGenerator(QObject):
-    bms_state_updated = pyqtSignal(BmsTelemetryState)
+    telemetry_frame_updated = pyqtSignal(TelemetryFrame)
 
     def __init__(self, volt_count=138, temp_count=175):
         super().__init__()
@@ -134,4 +135,8 @@ class MockDataGenerator(QObject):
         s.cell_temperatures[:] = self.temp_bases + temp_drift + np.random.normal(0, 0.05, self.temp_count)
 
         # Emit the fully updated state object
-        self.bms_state_updated.emit(s)
+        frame = TelemetryFrame(
+            timestamp=current_time,
+            state=s
+        )
+        self.telemetry_frame_updated.emit(frame)

@@ -1,7 +1,6 @@
-import time
 import numpy as np
 from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget, QScrollArea, QSizePolicy
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 from ui.sidebar import Sidebar
 from ui.screens.telemetry_screen import TelemetryScreen
@@ -32,11 +31,21 @@ class DashboardWindow(QMainWindow):
 
         self.command_sender = command_sender
         self.is_mock = is_mock
-        self._start_time = None
+
+        # --- Asynchronous Rendering State ---
+        self._latest_frame = None
+        self._last_rendered_timestamp = -1.0
+        self._is_connected = False
 
         self.init_ui()
 
+        # Configura il timer di rendering UI a ~30fps (33ms)
+        self.render_timer = QTimer()
+        self.render_timer.timeout.connect(self._render_loop)
+        self.render_timer.start(33)
+
     def init_ui(self):
+        # ... (Rimane identico al tuo codice originale) ...
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -44,12 +53,10 @@ class DashboardWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Sidebar
         self.sidebar = Sidebar()
         self.sidebar.nav_clicked.connect(self.on_nav_clicked)
         main_layout.addWidget(self.sidebar)
 
-        # Scrollable content area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
@@ -63,7 +70,6 @@ class DashboardWindow(QMainWindow):
         self.stack.currentChanged.connect(self._on_screen_changed)
         main_layout.addWidget(scroll, stretch=1)
 
-        # Screens, keyed the same as ui.nav_config.NAV_ENTRIES
         screen_factories = {
             "metrics": lambda: MetricsScreen(self.volt_mapping, self.temp_mapping),
             "charging": lambda: ChargingScreen(self.command_sender),
@@ -83,53 +89,31 @@ class DashboardWindow(QMainWindow):
 
         self.stack.setCurrentIndex(0)
 
-    def on_telemetry_received(self, state):
-        if self._start_time is None:
-            self._start_time = time.time()
-        current_time = time.time() - self._start_time
+    def set_connection_status(self, connected: bool):
+        """Da chiamare esternamente (es. da main.py) quando lo stato seriale cambia."""
+        if self._is_connected and not connected:
+            self._inject_nan_gap()
 
-        self.sidebar.update_connection_status(connected=True, is_mock=self.is_mock)
-        self.sidebar.uptime_plate.update_value(current_time)
+        self._is_connected = connected
+        self.sidebar.update_connection_status(connected=connected, is_mock=self.is_mock)
 
-        # Status (Enum)
-        if state.bms_status is not None:
-            # Assumendo che il plate si aspetti l'intero originale, usiamo .value
-            self.sidebar.fsm_plate.update_value(state.bms_status.value)
+    def _inject_nan_gap(self):
+        """Inietta un salto temporale se la connessione cade."""
+        if self._last_rendered_timestamp < 0:
+            return
 
-        # Pack State
-        self.sidebar.pack_voltage_plate.update_value(f"{state.pack_voltage:.1f}")
-        self.sidebar.pack_voltage_post_air_plate.update_value(f"{state.post_air_voltage:.1f}")
-        self.sidebar.pack_current_plate.update_value(f"{state.pack_current:.1f}")
-        self.sidebar.soc_plate.update_value(f"{state.soc:.1f}")
-        self.sidebar.sop_dischg_plate.update_value(f"{state.sop_dischg:.1f}")
-        self.sidebar.sop_chg_plate.update_value(f"{state.sop_chg:.1f}")
+        gap_time = self._last_rendered_timestamp + 0.001
+        for i in range(self.stack.count()):
+            widget = self.stack.widget(i)
+            if isinstance(widget, TelemetryScreen):
+                widget.inject_gap(gap_time)
 
-        # Contactors (Dict)
-        c = state.contactors
-        self.sidebar.actuator_plates["air_pos"].update_value(c["air_pos"])
-        self.sidebar.actuator_plates["air_neg"].update_value(c["air_neg"])
-        self.sidebar.actuator_plates["pre_charge"].update_value(c["pre_charge"])
-        self.sidebar.actuator_plates["sdc"].update_value(c["sdc"])
-
-        # Diagnostics
-        self.sidebar.fault_plate.update_value(state.diagnostic_state)
-
-        # Cell Voltages (Already NumPy arrays)
-        volts = state.cell_voltages
-        if volts.size > 0:
-            v_min, v_max, v_avg = float(np.min(volts)), float(np.max(volts)), float(np.mean(volts))
-            self.sidebar.voltage_stats_plate.update_stats(v_min, v_max, v_avg, v_max - v_min)
-
-        # Cell Temperatures (Already NumPy arrays)
-        temps = state.cell_temperatures
-        if temps.size > 0:
-            t_min, t_max, t_avg = float(np.min(temps)), float(np.max(temps)), float(np.mean(temps))
-            self.sidebar.temp_stats_plate.update_stats(t_min, t_max, t_avg, t_max - t_min)
-
-        # Forward the new state object to the active screen
-        active_screen = self.stack.currentWidget()
-        if isinstance(active_screen, TelemetryScreen):
-            active_screen.add_point(current_time, state)
+    def on_telemetry_received(self, frame):
+        """
+        O(1) Receiver. Salva solo il frame (Envelope) senza bloccare la UI.
+        Assumiamo che 'frame' abbia .timestamp e .state
+        """
+        self._latest_frame = frame
 
     def on_nav_clicked(self, key):
         if key in self._nav_index_map:
@@ -152,3 +136,51 @@ class DashboardWindow(QMainWindow):
             if isinstance(active, TelemetryScreen):
                 active.clear_selection()
         super().keyPressEvent(event)
+
+    def _render_loop(self):
+        """Eseguito a 30Hz dal QTimer. Applica i dati alla UI."""
+        if not self._is_connected or self._latest_frame is None:
+            return
+
+        frame = self._latest_frame
+        if frame.timestamp <= self._last_rendered_timestamp:
+            return
+
+        self._last_rendered_timestamp = frame.timestamp
+        state = frame.state
+
+        # --- Sidebar Updates ---
+        self.sidebar.uptime_plate.update_value(frame.timestamp)
+
+        if state.bms_status is not None:
+            self.sidebar.fsm_plate.update_value(state.bms_status.value)
+
+        self.sidebar.pack_voltage_plate.update_value(f"{state.pack_voltage:.1f}")
+        self.sidebar.pack_voltage_post_air_plate.update_value(f"{state.post_air_voltage:.1f}")
+        self.sidebar.pack_current_plate.update_value(f"{state.pack_current:.1f}")
+        self.sidebar.soc_plate.update_value(f"{state.soc:.1f}")
+        self.sidebar.sop_dischg_plate.update_value(f"{state.sop_dischg:.1f}")
+        self.sidebar.sop_chg_plate.update_value(f"{state.sop_chg:.1f}")
+
+        c = state.contactors
+        self.sidebar.actuator_plates["air_pos"].update_value(c["air_pos"])
+        self.sidebar.actuator_plates["air_neg"].update_value(c["air_neg"])
+        self.sidebar.actuator_plates["pre_charge"].update_value(c["pre_charge"])
+        self.sidebar.actuator_plates["sdc"].update_value(c["sdc"])
+
+        self.sidebar.fault_plate.update_value(state.diagnostic_state)
+
+        volts = state.cell_voltages
+        if volts.size > 0:
+            v_min, v_max, v_avg = float(np.min(volts)), float(np.max(volts)), float(np.mean(volts))
+            self.sidebar.voltage_stats_plate.update_stats(v_min, v_max, v_avg, v_max - v_min)
+
+        temps = state.cell_temperatures
+        if temps.size > 0:
+            t_min, t_max, t_avg = float(np.min(temps)), float(np.max(temps)), float(np.mean(temps))
+            self.sidebar.temp_stats_plate.update_stats(t_min, t_max, t_avg, t_max - t_min)
+
+        # --- Forward to Active Screen ---
+        active_screen = self.stack.currentWidget()
+        if isinstance(active_screen, TelemetryScreen):
+            active_screen.add_point(frame.timestamp, state)

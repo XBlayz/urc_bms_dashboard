@@ -3,12 +3,13 @@ import time
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
 from data.generators.state import BmsTelemetryState
+from data.generators.telemetry import TelemetryFrame
 from data.extif_reader import ExtifUartReader
 from data.hardware.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
 
 
 class SerialDataGenerator(QObject):
-    bms_state_updated = pyqtSignal(BmsTelemetryState)
+    telemetry_frame_updated = pyqtSignal(TelemetryFrame)
 
     def __init__(self, port="/dev/ttyUSB0", baudrate=115200, volt_count=138, temp_count=175):
         super().__init__()
@@ -44,4 +45,10 @@ class SerialDataGenerator(QObject):
         self.current_state.update(telemetry)
 
     def emit_state(self):
-        self.bms_state_updated.emit(self.current_state)
+        current_time = time.time() - self.start_time
+
+        frame = TelemetryFrame(
+            timestamp=current_time,
+            state=self.current_state
+        )
+        self.telemetry_frame_updated.emit(frame)

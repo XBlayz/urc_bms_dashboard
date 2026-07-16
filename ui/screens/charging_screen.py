@@ -1,3 +1,4 @@
+import numpy as np
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QMessageBox, QWidget, QSizePolicy, QStackedWidget
@@ -208,27 +209,23 @@ class ChargingScreen(TelemetryScreen, PlotHostMixin):
             self.feedback_lbl.setStyleSheet(Theme.feedback_label(is_success=False))
             self.feedback_lbl.setText(Strings.MSG_INVALID_INPUT)
 
-    def update_telemetry(self, telemetry):
-        if telemetry.HasField("status"):
-            self.charging_state_plate.update_value(telemetry.status.state)
+    def update_telemetry(self, state):
+        if state.bms_status is not None:
+            self.charging_state_plate.update_value(state.bms_status.value)
 
-        if telemetry.HasField("pack_state"):
-            ps = telemetry.pack_state
-            self.pack_voltage_plate.update_value(f"{ps.voltage:.1f}")
-            self.pack_current_plate.update_value(f"{ps.current:.1f}")
-            self.soc_plate.update_value(f"{ps.soc:.1f}")
+        self.pack_voltage_plate.update_value(f"{state.pack_voltage:.1f}")
+        self.pack_current_plate.update_value(f"{state.pack_current:.1f}")
+        self.soc_plate.update_value(f"{state.soc:.1f}")
 
-    def add_point(self, current_time, telemetry):
-        self.update_telemetry(telemetry)
+    def add_point(self, current_time, state):
+        self.update_telemetry(state)
 
-        if telemetry.HasField("pack_state"):
-            ps = telemetry.pack_state
-            self.soc_plot.add_point(current_time, [ps.soc])
-            self.voltage_plot.add_point(current_time, [ps.voltage])
-            self.current_plot.add_point(current_time, [ps.current])
+        self.soc_plot.add_point(current_time, [state.soc])
+        self.voltage_plot.add_point(current_time, [state.pack_voltage])
+        self.current_plot.add_point(current_time, [state.pack_current])
 
-        # Update charge duration while in CHARGING state
-        if telemetry.HasField("status") and telemetry.status.state == 2:
+        # Update charge duration while in CHARGING state (value = 2)
+        if state.bms_status is not None and state.bms_status.value == 2:
             if self.charge_start_time is None:
                 self.charge_start_time = current_time
             duration = current_time - self.charge_start_time
@@ -236,6 +233,12 @@ class ChargingScreen(TelemetryScreen, PlotHostMixin):
         else:
             self.charge_start_time = None
             self.charge_duration_plate.update_value(None)
+
+    def inject_gap(self, timestamp):
+        """Inserisce dei valori NaN per spezzare le linee temporali alla disconnessione."""
+        self.soc_plot.add_point(timestamp, [np.nan])
+        self.voltage_plot.add_point(timestamp, [np.nan])
+        self.current_plot.add_point(timestamp, [np.nan])
 
     def clear_selection(self):
         for plot in (self.soc_plot, self.voltage_plot, self.current_plot):

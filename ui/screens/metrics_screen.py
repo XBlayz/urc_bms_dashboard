@@ -170,19 +170,14 @@ class MetricsScreen(TelemetryScreen, PlotHostMixin):
         plot.sig_maximize_toggled.connect(self._on_plot_maximize)
 
     def add_point(self, current_time, state):
-        # Pack State
         self.soc_plot.add_point(current_time, [state.soc])
         self.pack_voltage_plot.add_point(current_time, [state.pack_voltage, state.post_air_voltage])
         self.pack_current_plot.add_point(current_time, [state.pack_current])
 
-        # Status (Enum)
         if state.bms_status is not None:
-            # Utilizziamo .value per passare l'intero al grafico (pyqtgraph richiede dati numerici)
             self.fsm_plot.add_point(current_time, [state.bms_status.value])
 
-        # Contactors (Dict)
         c = state.contactors
-        # Convertiamo i booleani in interi (0/1) per facilitare il plotting delle forme d'onda quadre
         self.actuator_plot.add_point(current_time, [
             int(c["air_pos"]),
             int(c["air_neg"]),
@@ -190,16 +185,22 @@ class MetricsScreen(TelemetryScreen, PlotHostMixin):
             int(c["sdc"])
         ])
 
-        # Cell Voltages (Array NumPy)
         if state.cell_voltages.size > 0:
-            # Passiamo direttamente l'array NumPy, pyqtgraph è ottimizzato per gestirli nativamente
             self.cell_voltages_plot.add_point(current_time, state.cell_voltages)
             self.voltage_histogram.update_data(state.cell_voltages)
 
-        # Cell Temperatures (Array NumPy)
         if state.cell_temperatures.size > 0:
             self.cell_temps_plot.add_point(current_time, state.cell_temperatures)
             self.temp_histogram.update_data(state.cell_temperatures)
+
+    def inject_gap(self, timestamp):
+        """Inserisce dei valori NaN per spezzare le linee di trend temporali."""
+        import numpy as np # Assicurati che np sia importato in cima al file
+        self.soc_plot.add_point(timestamp, [np.nan])
+        self.pack_voltage_plot.add_point(timestamp, [np.nan, np.nan])
+        self.pack_current_plot.add_point(timestamp, [np.nan])
+        self.fsm_plot.add_point(timestamp, [np.nan])
+        self.actuator_plot.add_point(timestamp, [np.nan, np.nan, np.nan, np.nan])
 
     def clear_selection(self):
         for plot in (
