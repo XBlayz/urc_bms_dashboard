@@ -51,6 +51,7 @@ class BmsCommandSender(QObject):
             return False
 
     def send_charging_start(self, voltage, current):
+        #TODO: Configurare messaggio di invio dei comandi
         charging = messages_pb2.ChargingSettings() # pyright: ignore[reportAttributeAccessIssue]
         charging.set_voltage = float(voltage)
         charging.set_current = float(current)
@@ -58,11 +59,13 @@ class BmsCommandSender(QObject):
         return self._send_protobuf(payload, "charging_start")
 
     def send_charging_stop(self):
+        #TODO: Configurare messaggio di invio dei comandi
         empty = messages_pb2.BmsTelemetry() # pyright: ignore[reportAttributeAccessIssue]
         payload = empty.SerializeToString()
         return self._send_protobuf(payload, "charging_stop")
 
     def send_charging_settings(self, voltage, current):
+        #TODO: Configurare messaggio di invio dei comandi
         charging = messages_pb2.ChargingSettings() # pyright: ignore[reportAttributeAccessIssue]
         charging.set_voltage = float(voltage)
         charging.set_current = float(current)
