@@ -68,12 +68,12 @@ def main():
 
     elif args.mock:
         generator = MockDataGenerator(volt_count=volt_count, temp_count=temp_count)
-        generator.start(100)
+        generator.start(500)
         window.set_connection_status(True)
 
     else:
         generator = SerialDataGenerator(port=args.port, baudrate=args.baud, volt_count=volt_count, temp_count=temp_count)
-        generator.start(100)
+        generator.start()
         window.set_connection_status(True)
 
     generator.telemetry_frame_updated.connect(window.on_telemetry_received)
