@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-package messages;
-
 enum SystemState {
   SYSTEM_STATE_STANDBY = 0;
   SYSTEM_STATE_DRIVING = 1;
@@ -17,7 +15,7 @@ enum SystemState {
 }
 
 message BmsStatus {
-  SystemState state = 1;
+  SystemState state = 2;
 }
 
 message PackState {
@@ -60,13 +58,16 @@ message Diagnostics {
   uint32 diagnostic_state = 2;
 }
 
+// Wrapper for telemetry updates
 message BmsTelemetry {
-  BmsStatus status = 1;
-  PackState pack_state = 2;
-  CellVoltages cell_voltages = 3;
-  CellTemperatures cell_temperatures = 4;
-  BalancingState balancing = 5;
-  ActuatorState contactors = 6;
-  ChargingSettings charging = 7;
-  Diagnostics diagnostics = 8;
+  oneof payload {
+    BmsStatus status = 1;
+    PackState pack_state = 2;
+    CellVoltages cell_voltages = 3;
+    CellTemperatures cell_temperatures = 4;
+    BalancingState balancing = 5;
+    ActuatorState contactors = 6;
+    ChargingSettings charging = 7;
+    Diagnostics diagnostics = 8;
+  }
 }
