@@ -2,6 +2,6 @@ from ui.screens.placeholder_screen import PlaceholderScreen
 from ui.strings import Strings
 
 
-class OverrideScreen(PlaceholderScreen):
+class SettingsScreen(PlaceholderScreen):
     def __init__(self, parent=None):
-        super().__init__(Strings.NAV_OVERRIDE, Strings.MSG_TODO_OVERRIDE, parent)
+        super().__init__(Strings.NAV_SETTINGS, Strings.MSG_TODO_SETTINGS, parent)

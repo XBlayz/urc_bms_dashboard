@@ -5,10 +5,21 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 from ui.strings import Strings
 from ui.theme import CurrentTheme as Theme
+from ui.fsm_state import fsm_state_labels
+from ui.nav_config import NAV_ENTRIES, DEFAULT_NAV_KEY
 from ui.widgets.plates import (
     EnumStatePlate, UnitPlate, ActuatorStatePlate,
-    StatSummaryPlate, TimePlate
+    StatSummaryPlate, TimePlate, FaultCounterPlate
 )
+
+
+# (label, telemetry field key, true_color, false_color) — see UI_definition.md 1.3.
+ACTUATOR_CONFIG = [
+    (Strings.STATE_SDC, "sdc", "#FF4444", "#00FF00"),
+    (Strings.STATE_PRECHARGE, "pre_charge", "#FFDD00", "#888888"),
+    (Strings.STATE_AIR_PLUS, "air_pos", "#FF4444", "#888888"),
+    (Strings.STATE_AIR_MINUS, "air_neg", "#FF4444", "#888888"),
+]
 
 
 class LEDIndicator(QFrame):
@@ -60,22 +71,14 @@ class Sidebar(QFrame):
         layout.addSpacing(10)
 
         # Navigation buttons with separators
-        nav_items = [
-            (Strings.NAV_METRICS, "metrics", True, True),
-            (Strings.NAV_CHARGING, "charging", False, False),
-            (Strings.NAV_OVERRIDE, "override", False, True),
-            (Strings.NAV_LOGS, "logs", False, True),
-            (Strings.NAV_EXPORT, "export", False, False),
-        ]
-
         nav_layout = QVBoxLayout()
-        for (text, key, active, line) in nav_items:
-            btn = NavButton(text, key, is_active=active)
+        for entry in NAV_ENTRIES:
+            btn = NavButton(entry.label, entry.key, is_active=(entry.key == DEFAULT_NAV_KEY))
             btn.clicked_with_key.connect(self.on_nav_clicked)
-            self.nav_buttons[key] = btn
+            self.nav_buttons[entry.key] = btn
             nav_layout.addWidget(btn)
 
-            if line:
+            if entry.section_break:
                 sep = QFrame()
                 sep.setFrameShape(QFrame.Shape.HLine)
                 sep.setFixedHeight(1)
@@ -139,7 +142,12 @@ class Sidebar(QFrame):
         stats_row.addWidget(self.temp_stats_plate, stretch=1)
         state_layout.addLayout(stats_row)
 
-        # Actuators: 2x2 grid
+        # FSM state plate
+        self.fsm_plate = EnumStatePlate(Strings.LBL_FSM_STATE, fsm_state_labels())
+        self.fsm_plate.setMaximumHeight(55)
+        state_layout.addWidget(self.fsm_plate)
+
+        # Actuators: 2x2 grid, per UI_definition.md 1.3 (SDC | Pre-charge / AIR+ | AIR-)
         actuators_row = QHBoxLayout()
         actuators_row.setSpacing(2)
         actuator_col1 = QVBoxLayout()
@@ -147,52 +155,23 @@ class Sidebar(QFrame):
         actuator_col2 = QVBoxLayout()
         actuator_col2.setSpacing(2)
 
-        actuator_rows = [
-            (Strings.STATE_AIR_PLUS, "air_pos", True, "#00FF00"),
-            (Strings.STATE_PRECHARGE, "pre_charge", True, "#00FF00"),
-        ]
         self.actuator_plates = {}
-        for label, field, default, color in actuator_rows:
-            plate = ActuatorStatePlate(label, value=default, true_color=color, false_color="#444444")
+        for i, (label, field, true_color, false_color) in enumerate(ACTUATOR_CONFIG):
+            plate = ActuatorStatePlate(label, value=False, true_color=true_color, false_color=false_color)
             plate.setMaximumHeight(45)
             self.actuator_plates[field] = plate
-            actuator_col1.addWidget(plate)
-
-        actuator_rows2 = [
-            (Strings.STATE_AIR_MINUS, "air_neg", True, "#FF4444"),
-            (Strings.STATE_SDC, "sdc", True, "#00FF00"),
-        ]
-        for label, field, default, color in actuator_rows2:
-            plate = ActuatorStatePlate(label, value=default, true_color=color, false_color="#444444")
-            plate.setMaximumHeight(45)
-            self.actuator_plates[field] = plate
-            actuator_col2.addWidget(plate)
+            (actuator_col1 if i % 2 == 0 else actuator_col2).addWidget(plate)
 
         actuators_row.addLayout(actuator_col1, stretch=1)
         actuators_row.addLayout(actuator_col2, stretch=1)
         state_layout.addLayout(actuators_row)
 
-        # FSM state plate (penultimo)
-        self.fsm_plate = EnumStatePlate(
-            Strings.LBL_FSM_STATE,
-            {
-                0: Strings.STATE_STANDBY,
-                1: Strings.STATE_DRIVING,
-                2: Strings.STATE_CHARGING,
-                3: Strings.STATE_ERROR,
-                4: Strings.STATE_PRECHARGING,
-                5: Strings.STATE_PREPARING_CHARGING,
-                6: Strings.STATE_INITIALIZING,
-                7: Strings.STATE_EXITING_CHARGING,
-                8: Strings.STATE_OVERRIDE,
-                10: Strings.STATE_NONE,
-            },
-            value_key="state"
-        )
-        self.fsm_plate.setMaximumHeight(55)
-        state_layout.addWidget(self.fsm_plate)
+        # Fault counter
+        self.fault_plate = FaultCounterPlate(Strings.LBL_FAULTS)
+        self.fault_plate.setMaximumHeight(50)
+        state_layout.addWidget(self.fault_plate)
 
-        # Uptime plate (ultimo)
+        # Uptime plate
         self.uptime_plate = TimePlate(Strings.LBL_UPTIME)
         self.uptime_plate.setMaximumHeight(50)
         state_layout.addWidget(self.uptime_plate)

@@ -1,6 +1,14 @@
 class Theme:
-    H_SIZE_S = 400
-    W_SIZE_S = 900
+    H_SIZE_S = 500
+    W_SIZE_S = 1100
+
+    # Heatmap gradient thresholds (min / optimal / max) for cell values.
+    VOLTAGE_MIN = 2.5
+    VOLTAGE_OPT = 3.6
+    VOLTAGE_MAX = 4.2
+    TEMP_MIN = 15.0
+    TEMP_OPT = 35.0
+    TEMP_MAX = 60.0
 
     @classmethod
     def main_window(cls):
@@ -57,12 +65,7 @@ class Theme:
 
     @classmethod
     def time_series_plot(cls):
-        return """
-            #TimeSeriesPlotWidget {
-                background-color: #1A1A1A;
-                border-radius: 12px;
-            }
-        """
+        return "background-color: #1A1A1A; border-radius: 12px;"
 
     @classmethod
     def plot_header(cls):
@@ -201,15 +204,15 @@ class Theme:
 
     @classmethod
     def plate_title(cls):
-        return "color: #AAAAAA; font-size: 11px; font-weight: bold; letter-spacing: 1px;"
+        return "color: #AAAAAA; font-size: 9px; font-weight: bold; letter-spacing: 0.5px;"
 
     @classmethod
     def plate_value(cls):
-        return "color: #FFFFFF; font-size: 20px; font-weight: bold; font-family: monospace;"
+        return "color: #FFFFFF; font-size: 14px; font-weight: bold; font-family: monospace;"
 
     @classmethod
     def plate_unit(cls):
-        return "color: #888888; font-size: 12px; font-family: monospace;"
+        return "color: #888888; font-size: 10px; font-family: monospace;"
 
     @classmethod
     def connection_panel(cls):
@@ -304,6 +307,11 @@ class Theme:
                 background-color: #A3202B;
             }
         """
+
+    @classmethod
+    def feedback_label(cls, is_success=True):
+        color = "#00FF00" if is_success else "#FF4444"
+        return f"color: {color}; font-size: 12px; font-weight: bold;"
 
     # PyQtGraph Colors
     PG_BG = "#2A2A2A"

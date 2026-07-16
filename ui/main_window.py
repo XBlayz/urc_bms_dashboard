@@ -1,17 +1,19 @@
-import numpy as np
 import time
+import numpy as np
 from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget, QScrollArea, QSizePolicy
 from PyQt6.QtCore import Qt
 
 from ui.sidebar import Sidebar
+from ui.screens.telemetry_screen import TelemetryScreen
 from ui.screens.metrics_screen import MetricsScreen
 from ui.screens.charging_screen import ChargingScreen
 from ui.screens.override_screen import OverrideScreen
 from ui.screens.logs_screen import LogsScreen
-from ui.screens.export_screen import ExportScreen
+from ui.screens.settings_screen import SettingsScreen
 from ui.strings import Strings
 from ui.theme import CurrentTheme as Theme
-from data.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
+from ui.nav_config import NAV_ENTRIES
+from data.hardware.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
 
 
 class DashboardWindow(QMainWindow):
@@ -54,7 +56,6 @@ class DashboardWindow(QMainWindow):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-        # Content Area with QStackedWidget
         self.stack = QStackedWidget()
         self.stack.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         scroll.setWidget(self.stack)
@@ -62,27 +63,24 @@ class DashboardWindow(QMainWindow):
         self.stack.currentChanged.connect(self._on_screen_changed)
         main_layout.addWidget(scroll, stretch=1)
 
-        # Metrics Screen
-        self.metrics_screen = MetricsScreen(self.volt_mapping, self.temp_mapping)
-        self.stack.addWidget(self.metrics_screen)
+        # Screens, keyed the same as ui.nav_config.NAV_ENTRIES
+        screen_factories = {
+            "metrics": lambda: MetricsScreen(self.volt_mapping, self.temp_mapping),
+            "charging": lambda: ChargingScreen(self.command_sender),
+            "override": OverrideScreen,
+            "logs": LogsScreen,
+            "settings": SettingsScreen,
+        }
 
-        # Charging Screen
-        self.charging_screen = ChargingScreen(self.command_sender)
-        self.stack.addWidget(self.charging_screen)
+        self._nav_index_map = {}
+        for i, entry in enumerate(NAV_ENTRIES):
+            screen = screen_factories[entry.key]()
+            self.stack.addWidget(screen)
+            self._nav_index_map[entry.key] = i
 
-        # Override Screen
-        self.override_screen = OverrideScreen()
-        self.stack.addWidget(self.override_screen)
+        self.metrics_screen = self.stack.widget(self._nav_index_map["metrics"])
+        self.charging_screen = self.stack.widget(self._nav_index_map["charging"])
 
-        # Logs Screen
-        self.logs_screen = LogsScreen()
-        self.stack.addWidget(self.logs_screen)
-
-        # Export Screen
-        self.export_screen = ExportScreen()
-        self.stack.addWidget(self.export_screen)
-
-        # Show metrics screen by default
         self.stack.setCurrentIndex(0)
 
     def on_telemetry_received(self, telemetry):
@@ -90,8 +88,8 @@ class DashboardWindow(QMainWindow):
             self._start_time = time.time()
         current_time = time.time() - self._start_time
 
-        # Update sidebar state panels
         self.sidebar.update_connection_status(connected=True, is_mock=self.is_mock)
+        self.sidebar.uptime_plate.update_value(current_time)
 
         if telemetry.HasField("status"):
             self.sidebar.fsm_plate.update_value(telemetry.status.state)
@@ -112,37 +110,26 @@ class DashboardWindow(QMainWindow):
             self.sidebar.actuator_plates["pre_charge"].update_value(c.pre_charge)
             self.sidebar.actuator_plates["sdc"].update_value(c.sdc)
 
+        if telemetry.HasField("diagnostics"):
+            self.sidebar.fault_plate.update_value(telemetry.diagnostics.diagnostic_state)
+
         if telemetry.HasField("cell_voltages") and telemetry.HasField("cell_temperatures"):
             volts = np.array(telemetry.cell_voltages.voltages, dtype=np.float64)
             temps = np.array(telemetry.cell_temperatures.temperatures, dtype=np.float64)
 
-            v_min = float(np.min(volts))
-            v_max = float(np.max(volts))
-            v_avg = float(np.mean(volts))
-            v_delta = float(v_max - v_min)
-            self.sidebar.voltage_stats_plate.update_stats(v_min, v_max, v_avg, v_delta)
+            v_min, v_max, v_avg = float(np.min(volts)), float(np.max(volts)), float(np.mean(volts))
+            self.sidebar.voltage_stats_plate.update_stats(v_min, v_max, v_avg, v_max - v_min)
 
-            t_min = float(np.min(temps))
-            t_max = float(np.max(temps))
-            t_avg = float(np.mean(temps))
-            t_delta = float(t_max - t_min)
-            self.sidebar.temp_stats_plate.update_stats(t_min, t_max, t_avg, t_delta)
+            t_min, t_max, t_avg = float(np.min(temps)), float(np.max(temps)), float(np.mean(temps))
+            self.sidebar.temp_stats_plate.update_stats(t_min, t_max, t_avg, t_max - t_min)
 
-        # Forward to active screen
         active_screen = self.stack.currentWidget()
-        if hasattr(active_screen, 'add_point'):
-            active_screen.add_point(current_time, telemetry) # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        if isinstance(active_screen, TelemetryScreen):
+            active_screen.add_point(current_time, telemetry)
 
     def on_nav_clicked(self, key):
-        index_map = {
-            "metrics": 0,
-            "charging": 1,
-            "override": 2,
-            "logs": 3,
-            "export": 4,
-        }
-        if key in index_map:
-            self.stack.setCurrentIndex(index_map[key])
+        if key in self._nav_index_map:
+            self.stack.setCurrentIndex(self._nav_index_map[key])
 
     def _on_screen_changed(self, index):
         if index >= 0:
@@ -158,6 +145,6 @@ class DashboardWindow(QMainWindow):
     def keyPressEvent(self, event): # pyright: ignore[reportIncompatibleMethodOverride]
         if event.key() == Qt.Key.Key_Escape:
             active = self.stack.currentWidget()
-            if hasattr(active, 'clear_selection'):
-                active.clear_selection() # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+            if isinstance(active, TelemetryScreen):
+                active.clear_selection()
         super().keyPressEvent(event)

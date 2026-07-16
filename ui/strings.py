@@ -16,7 +16,7 @@ class Strings:
     NAV_CHARGING = "CHARGING"
     NAV_OVERRIDE = "OVERRIDE"
     NAV_LOGS = "LOGS"
-    NAV_EXPORT = "EXPORT DATA"
+    NAV_SETTINGS = "SETTINGS"
 
     STATE_SDC = "SDC"
     STATE_AIR_PLUS = "AIR+"
@@ -25,14 +25,26 @@ class Strings:
 
     STATUS_DRIVING = "DRIVING"
 
+    # actuator plate labels/values
+    LBL_ACTUATOR_CLOSE = "Close"
+    LBL_ACTUATOR_OPEN = "Open"
+
     # time_series_plot
     BTN_AUTO_SCROLL = "AUTO SCROLL"
     BTN_PAUSE = "PAUSE"
     BTN_TABLE = "TABLE VIEW"
     BTN_MAXIMIZE = "MAXIMIZE"
     BTN_RESET = "RESET"
+    BTN_FIT_X = "FIT X"
+    BTN_FIT_Y = "FIT Y"
+    BTN_FIT_XY = "FIT X/Y"
+    BTN_SELECT_ALL = "ALL"
+    BTN_DESELECT_ALL = "NONE"
+    BTN_MATRIX_VIEW = "MATRIX VIEW"
     STATS_EMPTY = "STD: --   MAX: --   MIN: --"
     FMT_STATS = "STD: {std:.1f}   MAX: {max:.3f}{unit}   MIN: {min:.3f}{unit}"
+    LBL_TRUE = "True"
+    LBL_FALSE = "False"
 
     # selection_panel
     EMPTY_TIME = "--"
@@ -101,14 +113,16 @@ class Strings:
     MSG_CHARGING_STARTED = "Charging started"
     MSG_CHARGING_STOPPED = "Charging stopped"
     MSG_SETTINGS_APPLIED = "Charging settings applied"
+    MSG_INVALID_INPUT = "Invalid input"
     TITLE_CHARGING_SUMMARY = "Charging Summary"
     MSG_CONFIRM_START = "Start charging at {voltage}V and {current}A?"
 
-    # logs / export
+    # logs / override / settings (placeholders, TODO)
     LBL_LOGS = "LOGS"
-    LBL_EXPORT = "EXPORT DATA"
     LBL_NO_LOGS = "No logs available yet."
-    LBL_NO_EXPORT = "No export data available yet."
+    MSG_TODO_OVERRIDE = "TODO: Override controls not implemented yet."
+    MSG_TODO_LOGS = "TODO: Logs view not implemented yet."
+    MSG_TODO_SETTINGS = "TODO: Settings not implemented yet."
 
     # plots
     TITLE_SOC = "SoC"
