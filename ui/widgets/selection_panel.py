@@ -46,4 +46,7 @@ class SelectionPanel(QFrame):
             self.cell_lbl.setText(label_text)
             self.cell_lbl.setStyleSheet(Theme.cell_label_active())
             self.time_lbl.setText(Strings.FMT_TIME.format(time=time_val))
-            self.value_lbl.setText(Strings.FMT_VALUE.format(value=value, unit=unit))
+            if isinstance(value, str):
+                self.value_lbl.setText(value)
+            else:
+                self.value_lbl.setText(Strings.FMT_VALUE.format(value=value, unit=unit))

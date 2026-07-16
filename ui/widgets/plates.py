@@ -142,7 +142,7 @@ class TimePlate(Plate):
 
         self.update_value(seconds)
 
-    def update_value(self, seconds):
+    def update_value(self, seconds): # pyright: ignore[reportIncompatibleMethodOverride]
         if seconds is None or seconds < 0:
             self.value_lbl.setText("--:--:--")
             return
@@ -168,7 +168,7 @@ class FaultCounterPlate(Plate):
         self.value_lbl.setStyleSheet("color: #FFFFFF; font-size: 14px; font-weight: bold; font-family: monospace;")
         self.body_layout.addWidget(self.value_lbl)
 
-    def update_value(self, diagnostic_state):
+    def update_value(self, diagnostic_state): # pyright: ignore[reportIncompatibleMethodOverride]
         fault_count = bin(diagnostic_state).count("1") if diagnostic_state else 0
         color = "#FF4444" if fault_count > 0 else "#00FF00"
         self.value_lbl.setText(str(fault_count))

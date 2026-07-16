@@ -7,6 +7,7 @@ from ui.strings import Strings
 from ui.theme import CurrentTheme as Theme
 from ui.fsm_state import fsm_state_labels
 from ui.nav_config import NAV_ENTRIES, DEFAULT_NAV_KEY
+from ui.widgets.window_size_slider import WindowSizeSlider
 from ui.widgets.plates import (
     EnumStatePlate, UnitPlate, ActuatorStatePlate,
     StatSummaryPlate, TimePlate, FaultCounterPlate
@@ -175,6 +176,13 @@ class Sidebar(QFrame):
         self.uptime_plate = TimePlate(Strings.LBL_UPTIME)
         self.uptime_plate.setMaximumHeight(50)
         state_layout.addWidget(self.uptime_plate)
+
+        layout.addLayout(state_layout, stretch=1)
+
+        # Global autoscroll window size control (shared by every temporal plot)
+        self.window_size_slider = WindowSizeSlider()
+        self.window_size_slider.setMaximumHeight(50)
+        state_layout.addWidget(self.window_size_slider)
 
         layout.addLayout(state_layout, stretch=1)
 

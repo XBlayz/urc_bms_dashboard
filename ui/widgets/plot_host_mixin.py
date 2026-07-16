@@ -22,7 +22,7 @@ class PlotHostMixin:
         self._maximized_origin_grid = None
 
     def _on_plot_maximize(self, checked):
-        sender = self.sender()
+        sender = self.sender() # pyright: ignore[reportAttributeAccessIssue]
         if not sender:
             return
         if checked:
@@ -41,14 +41,14 @@ class PlotHostMixin:
 
     def _constrain_max_page(self):
         scroll_area = None
-        parent = self.parent()
+        parent = self.parent() # pyright: ignore[reportAttributeAccessIssue]
         while parent:
             if isinstance(parent, QScrollArea):
                 scroll_area = parent
                 break
             parent = parent.parent()
         if scroll_area and scroll_area.viewport():
-            size = scroll_area.viewport().size()
+            size = scroll_area.viewport().size() # pyright: ignore[reportOptionalMemberAccess]
             self._max_page.setMaximumSize(size)
             self._max_page.setMinimumSize(size)
 

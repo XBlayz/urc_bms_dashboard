@@ -152,6 +152,12 @@ class MetricsScreen(TelemetryScreen, PlotHostMixin):
         temp_cell_row.add_item(self.temp_histogram)
         layout.addWidget(temp_cell_row)
 
+        self.cell_voltages_plot.sig_signal_selected.connect(self.voltage_histogram.set_external_highlight)
+        self.voltage_histogram.sig_signal_selected.connect(self.cell_voltages_plot.set_external_highlight)
+
+        self.cell_temps_plot.sig_signal_selected.connect(self.temp_histogram.set_external_highlight)
+        self.temp_histogram.sig_signal_selected.connect(self.cell_temps_plot.set_external_highlight)
+
         stack.addWidget(normal_page)
         self._init_plot_host(stack)
 
@@ -206,6 +212,7 @@ class MetricsScreen(TelemetryScreen, PlotHostMixin):
         for plot in (
             self.pack_current_plot, self.soc_plot, self.pack_voltage_plot,
             self.fsm_plot, self.actuator_plot, self.cell_voltages_plot, self.cell_temps_plot,
+            self.voltage_histogram, self.temp_histogram,
         ):
             if hasattr(plot, 'clear_selection'):
-                plot.clear_selection()
+                plot.clear_selection() # pyright: ignore[reportAttributeAccessIssue]

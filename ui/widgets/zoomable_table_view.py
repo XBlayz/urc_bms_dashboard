@@ -11,15 +11,15 @@ class ZoomableTableView(QTableView):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._cell_size = 48
-        self.horizontalHeader().setDefaultSectionSize(self._cell_size)
-        self.verticalHeader().setDefaultSectionSize(self._cell_size)
+        self.horizontalHeader().setDefaultSectionSize(self._cell_size) # pyright: ignore[reportOptionalMemberAccess]
+        self.verticalHeader().setDefaultSectionSize(self._cell_size) # pyright: ignore[reportOptionalMemberAccess]
 
-    def wheelEvent(self, event):
+    def wheelEvent(self, event): # pyright: ignore[reportIncompatibleMethodOverride]
         if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             delta = 4 if event.angleDelta().y() > 0 else -4
             self._cell_size = max(self.MIN_CELL_SIZE, min(self.MAX_CELL_SIZE, self._cell_size + delta))
-            self.horizontalHeader().setDefaultSectionSize(self._cell_size)
-            self.verticalHeader().setDefaultSectionSize(self._cell_size)
+            self.horizontalHeader().setDefaultSectionSize(self._cell_size) # pyright: ignore[reportOptionalMemberAccess]
+            self.verticalHeader().setDefaultSectionSize(self._cell_size) # pyright: ignore[reportOptionalMemberAccess]
             event.accept()
         else:
             super().wheelEvent(event)

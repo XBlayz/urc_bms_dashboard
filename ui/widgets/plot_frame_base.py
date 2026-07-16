@@ -114,7 +114,7 @@ class PlotFrameBase(QFrame):
         if checked:
             self.stack.setCurrentIndex(1)
             if hasattr(self, '_last_x_view'):
-                self.table_model.update_data(self._last_x_view, self._last_data_2d)
+                self.table_model.update_data(self._last_x_view, self._last_data_2d) # pyright: ignore[reportAttributeAccessIssue]
         else:
             self.stack.setCurrentIndex(0)
 

@@ -1,15 +1,18 @@
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel, QGraphicsPathItem, QTableView
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPainterPath
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QPainterPath, QColor
 
 from ui.widgets.plot_frame_base import PlotFrameBase, ToggleButton
 from ui.widgets.time_series_plot import TimeSeriesPlotWidget
 from ui.widgets.ring_buffer import TimeSeriesRingBuffer
 from ui.widgets.table_models import TransitionTableModel, MatrixTableModel
 from ui.widgets.legend import LegendPanel
+from ui.widgets.selection_panel import SelectionPanel
 from ui.widgets.zoomable_table_view import ZoomableTableView
+from ui.widgets.ctrl_zoom_viewbox import CtrlZoomViewBox
+from ui.widgets.plot_settings import global_plot_settings
 from ui.fsm_state import fsm_state_labels
 from ui.strings import Strings
 from ui.theme import CurrentTheme as Theme
@@ -40,7 +43,7 @@ class EnumPlot(TimeSeriesPlotWidget):
         )
         self.plot_widget.getAxis('left').setTicks(None)
 
-    def _create_table_model(self):
+    def _create_table_model(self): # pyright: ignore[reportIncompatibleMethodOverride]
         return TransitionTableModel(
             series_count=1,
             label_formatter=self.label_formatter,
@@ -107,7 +110,7 @@ class EnumPlot(TimeSeriesPlotWidget):
 
         if self.auto_scroll_cb.isChecked():
             current_time = x_view[-1]
-            window_size_seconds = 10
+            window_size_seconds = global_plot_settings.window_size_seconds
             min_x = max(0, current_time - window_size_seconds)
             self.plot_widget.setXRange(min_x, max(window_size_seconds, current_time))
             y_padding = 0.5
@@ -130,12 +133,24 @@ class EnumPlot(TimeSeriesPlotWidget):
         idx = int(np.argmin(np.abs(self._last_x_view - mouse_point.x())))
         actual_x = self._last_x_view[idx]
         state = int(self._last_data_2d[idx, 0])
+
+        # Reject clicks that land far from the state's plotted y-level (empty space).
+        unique_states = sorted(set(self._last_data_2d[:len(self._last_x_view), 0].astype(int)))
+        state_to_y = {s: i for i, s in enumerate(unique_states)}
+        line_y = state_to_y.get(state, 0)
+
+        y_range = vb.viewRange()[1]
+        threshold = (y_range[1] - y_range[0]) * 0.15
+        if abs(line_y - mouse_point.y()) > threshold:
+            self.clear_selection()
+            return
+
         label = self.enum_map.get(state, "NONE")
         color = Theme.STATE_COLORS.get(label, "#888888")
 
         self.v_line.setPos(actual_x)
         self.v_line.show()
-        self.selection_panel.update_selection(label, actual_x, state, "", color)
+        self.selection_panel.update_selection(self.label_formatter(0), actual_x, label, "", color)
 
     def on_mouse_move(self, pos):
         if not self.plot_widget.sceneBoundingRect().contains(pos):
@@ -176,6 +191,7 @@ class StackedBoolPlot(PlotFrameBase):
 
         self.curves = []
         self.fill_items = []
+        self.selected_series_idx = None
         self.colors = [
             Theme.SIGNAL_COLORS.get("actuator_air_pos", "#00FF00"),
             Theme.SIGNAL_COLORS.get("actuator_air_neg", "#FF4444"),
@@ -198,7 +214,7 @@ class StackedBoolPlot(PlotFrameBase):
         plot_layout = QVBoxLayout(plot_page)
         plot_layout.setContentsMargins(10, 10, 10, 10)
 
-        self.plot_widget = pg.PlotWidget()
+        self.plot_widget = pg.PlotWidget(viewBox=CtrlZoomViewBox())
         self.plot_widget.setBackground(Theme.PG_BG)
         self.plot_widget.showGrid(x=True, y=True, alpha=Theme.PG_GRID_ALPHA)
         self.plot_widget.getAxis('bottom').setPen(Theme.PG_AXIS_PEN)
@@ -236,6 +252,11 @@ class StackedBoolPlot(PlotFrameBase):
         self.cursor_label.hide()
 
         plot_layout.addWidget(self.plot_widget, stretch=1)
+        self.cursor_label.raise_()
+
+        self.selection_panel = SelectionPanel(self.empty_text)
+        plot_layout.addWidget(self.selection_panel)
+
         self.stack.addWidget(plot_page)
 
         table_page = QFrame()
@@ -250,16 +271,23 @@ class StackedBoolPlot(PlotFrameBase):
             colors=self.colors,
         )
         self.table_view.setModel(self.table_model)
-        self.table_view.horizontalHeader().setDefaultSectionSize(70)
-        self.table_view.verticalHeader().setDefaultSectionSize(24)
+        self.table_view.horizontalHeader().setDefaultSectionSize(70) # pyright: ignore[reportOptionalMemberAccess]
+        self.table_view.verticalHeader().setDefaultSectionSize(24) # pyright: ignore[reportOptionalMemberAccess]
         table_layout.addWidget(self.table_view, stretch=1)
         self.stack.addWidget(table_page)
 
-        self.plot_widget.scene().sigMouseMoved.connect(self.on_mouse_move)
+        self.plot_widget.scene().sigMouseClicked.connect(self.on_mouse_click) # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        self.plot_widget.scene().sigMouseMoved.connect(self.on_mouse_move) # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+
+        global_plot_settings.window_size_changed.connect(self._on_window_size_changed)
 
     def _on_manual_range_change(self, *args):
         if self.auto_scroll_cb.isChecked():
             self.auto_scroll_cb.setChecked(False)
+
+    def _on_window_size_changed(self, value):
+        if self.auto_scroll_cb.isChecked() and hasattr(self, '_last_x_view'):
+            self.update_data(self._last_x_view, self._last_data_2d, force=True)
 
     def on_auto_scroll_toggled(self, checked):
         if checked and hasattr(self, '_last_x_view'):
@@ -319,7 +347,7 @@ class StackedBoolPlot(PlotFrameBase):
 
         if self.auto_scroll_cb.isChecked():
             current_time = x_view[-1]
-            window_size_seconds = 10
+            window_size_seconds = global_plot_settings.window_size_seconds
             min_x = max(0, current_time - window_size_seconds)
             self.plot_widget.setXRange(min_x, max(window_size_seconds, current_time))
 
@@ -328,6 +356,59 @@ class StackedBoolPlot(PlotFrameBase):
 
         active_count = np.sum(data_2d[len(x_view) - 1, :])
         self.stats_lbl.setText(f"ACTIVE: {int(active_count)}/{self.series_count}")
+
+    def on_mouse_click(self, event):
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        if not self.plot_widget.sceneBoundingRect().contains(event.scenePos()):
+            return
+        if not hasattr(self, '_last_x_view') or len(self._last_x_view) == 0:
+            return
+
+        vb = self.plot_widget.getViewBox()
+        mouse_point = vb.mapSceneToView(event.scenePos())
+        click_x, click_y = mouse_point.x(), mouse_point.y()
+
+        idx = int(np.argmin(np.abs(self._last_x_view - click_x)))
+        actual_x = self._last_x_view[idx]
+
+        # A click only selects a band if it lands close to that band's actual step line
+        # (its current True/False level), not anywhere in the band's vertical slot.
+        threshold = 0.15
+        band_idx = None
+        for i in range(self.series_count):
+            base = i * (self.BAND_HEIGHT + self.PADDING)
+            val = self._last_data_2d[idx, i]
+            line_y = base + (self.BAND_HEIGHT if val else 0.0)
+            if abs(click_y - line_y) <= threshold:
+                band_idx = i
+                break
+
+        if band_idx is None:
+            self.clear_selection()
+            return
+
+        self.selected_series_idx = band_idx
+        self.v_line.setPos(actual_x)
+        self.v_line.show()
+
+        val = bool(self._last_data_2d[idx, band_idx])
+        label = self.series_labels[band_idx]
+        color = self.colors[band_idx % len(self.colors)]
+        text = Strings.LBL_TRUE if val else Strings.LBL_FALSE
+        self.selection_panel.update_selection(label, actual_x, text, "", color)
+        self._apply_curve_highlight(band_idx)
+
+    def _apply_curve_highlight(self, index):
+        for i, curve in enumerate(self.curves):
+            color = self.colors[i % len(self.colors)]
+            if i == index:
+                curve.setPen(pg.mkPen(color=color, width=3))
+            else:
+                curve.setPen(pg.mkPen(color="#444444", width=2))
+        for i, item in enumerate(self.fill_items):
+            color = self.colors[i % len(self.colors)]
+            item.setBrush(pg.mkBrush(color + ("80" if i == index else "20")))
 
     def on_mouse_move(self, pos):
         if not self.plot_widget.sceneBoundingRect().contains(pos):
@@ -362,18 +443,27 @@ class StackedBoolPlot(PlotFrameBase):
             item.setPath(QPainterPath())
         self.table_model.update_data(np.empty(0), np.empty((0, self.series_count)))
         self.stats_lbl.setText(Strings.STATS_EMPTY)
-        self.v_line.hide()
-        self.cursor_label.hide()
+        self.clear_selection()
 
     def clear_selection(self):
+        self.selected_series_idx = None
         self.v_line.hide()
         self.cursor_label.hide()
+        self.selection_panel.update_selection(None, 0, 0, "", "")
+        for i, curve in enumerate(self.curves):
+            curve.setPen(pg.mkPen(color=self.colors[i % len(self.colors)], width=2))
+        for i, item in enumerate(self.fill_items):
+            item.setBrush(pg.mkBrush(self.colors[i % len(self.colors)] + "40"))
 
 
 class BarChartWidget(PlotFrameBase):
     """bar_chart (UI_definition.md 2.2): last instantaneous value per signal as bars,
     heatmap-colored, with a scrollable legend, min/max/avg/delta overlays and an
     optional spatial matrix/heatmap view."""
+
+    # Emits the selected bar index (or None on clear) so a paired time series plot
+    # (e.g. the corresponding cell voltage/temperature history) can mirror the highlight.
+    sig_signal_selected = pyqtSignal(object)
 
     def __init__(self, title, unit, bar_count, label_formatter_callback,
                  empty_text=Strings.EMPTY_CELL, heatmap=None,
@@ -393,6 +483,7 @@ class BarChartWidget(PlotFrameBase):
         self.current_data = np.zeros(bar_count, dtype=np.float64)
         self._series_visible = [True] * bar_count
         self._default_colors = ["#00AAFF"] * bar_count
+        self.selected_idx = None
 
         super().__init__(title, show_table_toggle=False, show_pause=True)
         self._build_pages()
@@ -425,6 +516,7 @@ class BarChartWidget(PlotFrameBase):
         self.bar_item = None
         self.highlight_item = None
         self.delta_bar_item = None
+        self.selected_highlight_item = None
 
         bars_layout.addWidget(self.plot_widget, stretch=1)
 
@@ -432,6 +524,9 @@ class BarChartWidget(PlotFrameBase):
         self.legend = LegendPanel(labels, self._default_colors)
         self.legend.sig_visibility_changed.connect(self._on_legend_visibility_changed)
         bars_layout.addWidget(self.legend)
+
+        self.selection_panel = SelectionPanel(self.empty_text)
+        bars_layout.addWidget(self.selection_panel)
 
         self.stack.addWidget(bars_page)
 
@@ -449,7 +544,8 @@ class BarChartWidget(PlotFrameBase):
             matrix_layout.addWidget(self.matrix_view, stretch=1)
             self.stack.addWidget(matrix_page)
 
-        self.plot_widget.scene().sigMouseMoved.connect(self.on_mouse_move)
+        self.plot_widget.scene().sigMouseMoved.connect(self.on_mouse_move) # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        self.plot_widget.scene().sigMouseClicked.connect(self.on_mouse_click) # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
 
     def on_matrix_toggled(self, checked):
         if checked:
@@ -475,12 +571,13 @@ class BarChartWidget(PlotFrameBase):
         self._render_bars()
 
     def _clear_dynamic(self):
-        for item in (self.bar_item, self.highlight_item, self.delta_bar_item):
+        for item in (self.bar_item, self.highlight_item, self.delta_bar_item, self.selected_highlight_item):
             if item is not None:
                 self.plot_widget.removeItem(item)
         self.bar_item = None
         self.highlight_item = None
         self.delta_bar_item = None
+        self.selected_highlight_item = None
 
     def _render_bars(self):
         self._clear_dynamic()
@@ -498,9 +595,18 @@ class BarChartWidget(PlotFrameBase):
         width = 0.6
 
         if self.heatmap is not None:
-            brushes = [pg.mkBrush(self.heatmap.color_for(v)) for v in vis_data]
+            colors = [self.heatmap.color_for(v) for v in vis_data]
         else:
-            brushes = [pg.mkBrush("#00AAFF") for _ in vis_data]
+            colors = [QColor("#00AAFF") for _ in vis_data]
+
+        # Dim every bar except the one selected via click (or via a paired plot).
+        if self.selected_idx is not None:
+            for i, xi in enumerate(x):
+                if xi != self.selected_idx:
+                    colors[i] = QColor(colors[i])
+                    colors[i].setAlpha(max(0, colors[i].alpha() - 60))
+
+        brushes = [pg.mkBrush(c) for c in colors]
 
         self.bar_item = pg.BarGraphItem(x=x, height=vis_data, width=width, brushes=brushes, pen=pg.mkPen(None))
         self.plot_widget.addItem(self.bar_item)
@@ -519,6 +625,13 @@ class BarChartWidget(PlotFrameBase):
         )
         self.plot_widget.addItem(self.highlight_item)
 
+        if self.selected_idx is not None and 0 <= self.selected_idx < n and visible_mask[self.selected_idx]:
+            self.selected_highlight_item = pg.BarGraphItem(
+                x=[self.selected_idx], height=[data[self.selected_idx]], width=width,
+                pens=[pg.mkPen("#FFFFFF", width=2)], brushes=[pg.mkBrush(None)],
+            )
+            self.plot_widget.addItem(self.selected_highlight_item)
+
         self.avg_line.setPos(mean_val)
         self.avg_line.show()
 
@@ -536,6 +649,58 @@ class BarChartWidget(PlotFrameBase):
         for i in range(0, n, step):
             ticks.append((i, self.label_formatter(i)))
         self.plot_widget.getAxis('bottom').setTicks([ticks])
+
+    def on_mouse_click(self, event):
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        if not self.plot_widget.sceneBoundingRect().contains(event.scenePos()):
+            return
+        if len(self.current_data) == 0:
+            return
+
+        vb = self.plot_widget.getViewBox()
+        mouse_point = vb.mapSceneToView(event.scenePos())
+        click_x, click_y = mouse_point.x(), mouse_point.y()
+
+        idx = int(round(click_x))
+        width = 0.6
+        valid = (
+            0 <= idx < len(self.current_data)
+            and self._series_visible[idx]
+            and abs(click_x - idx) <= width / 2
+        )
+        if valid:
+            bar_val = self.current_data[idx]
+            lo, hi = (0.0, bar_val) if bar_val >= 0 else (bar_val, 0.0)
+            valid = lo <= click_y <= hi
+
+        self._select_bar(idx if valid else None)
+
+    def _select_bar(self, idx):
+        self.selected_idx = idx
+        self._render_bars()
+        if idx is None:
+            self.selection_panel.update_selection(None, 0, 0, "", "")
+        else:
+            label = self.label_formatter(idx)
+            self.selection_panel.update_selection(label, 0.0, self.current_data[idx], self.unit, "#FFFFFF")
+        self.sig_signal_selected.emit(idx)
+
+    def set_external_highlight(self, index):
+        """Applies the highlight driven by a paired time series plot's selection.
+        Does not emit sig_signal_selected, to avoid feedback loops."""
+        if index is not None and (index < 0 or index >= len(self.current_data)):
+            index = None
+        self.selected_idx = index
+        self._render_bars()
+        if index is None:
+            self.selection_panel.update_selection(None, 0, 0, "", "")
+        else:
+            label = self.label_formatter(index)
+            self.selection_panel.update_selection(label, 0.0, self.current_data[index], self.unit, "#FFFFFF")
+
+    def clear_selection(self):
+        self._select_bar(None)
 
     def on_mouse_move(self, pos):
         if not self.plot_widget.sceneBoundingRect().contains(pos):
@@ -557,6 +722,8 @@ class BarChartWidget(PlotFrameBase):
     def reset_data(self):
         self.current_data = np.zeros(self.bar_count, dtype=np.float64)
         self._series_visible = [True] * self.bar_count
+        self.selected_idx = None
         for btn in self.legend.buttons:
             btn.set_visible_state(True)
         self._render_bars()
+        self.selection_panel.update_selection(None, 0, 0, "", "")

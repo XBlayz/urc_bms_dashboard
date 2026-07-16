@@ -1,19 +1,23 @@
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel, QTableView
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from ui.widgets.plot_frame_base import PlotFrameBase, ToggleButton
 from ui.widgets.ring_buffer import TimeSeriesRingBuffer
 from ui.widgets.table_models import SignalTimeTableModel
 from ui.widgets.legend import LegendPanel
 from ui.widgets.selection_panel import SelectionPanel
+from ui.widgets.ctrl_zoom_viewbox import CtrlZoomViewBox
+from ui.widgets.plot_settings import global_plot_settings
 from ui.strings import Strings
 from ui.theme import CurrentTheme as Theme
 
 
 class TimeSeriesPlotWidget(PlotFrameBase):
     """Plots one or more signals over time (UI_definition.md 2.1)."""
+
+    sig_signal_selected = pyqtSignal(object)
 
     def __init__(self, title, unit, series_count, label_formatter_callback,
                  empty_text=Strings.EMPTY_CELL, colors=None,
@@ -62,7 +66,7 @@ class TimeSeriesPlotWidget(PlotFrameBase):
         plot_layout = QVBoxLayout(self._plot_container)
         plot_layout.setContentsMargins(10, 10, 10, 10)
 
-        self.plot_widget = pg.PlotWidget()
+        self.plot_widget = pg.PlotWidget(viewBox=CtrlZoomViewBox())
         self.plot_widget.setBackground(Theme.PG_BG)
         self.plot_widget.showGrid(x=True, y=True, alpha=Theme.PG_GRID_ALPHA)
         self.plot_widget.getAxis('bottom').setPen(Theme.PG_AXIS_PEN)
@@ -103,6 +107,7 @@ class TimeSeriesPlotWidget(PlotFrameBase):
         self.cursor_label.hide()
 
         plot_layout.addWidget(self.plot_widget, stretch=1)
+        self.cursor_label.raise_()
 
         labels = [self.label_formatter(i) for i in range(self.series_count)]
         self.legend = LegendPanel(labels, self.colors)
@@ -129,13 +134,15 @@ class TimeSeriesPlotWidget(PlotFrameBase):
         self.table_view.setStyleSheet(Theme.table_view())
         self.table_model = self._create_table_model()
         self.table_view.setModel(self.table_model)
-        self.table_view.horizontalHeader().setDefaultSectionSize(70)
-        self.table_view.verticalHeader().setDefaultSectionSize(24)
+        self.table_view.horizontalHeader().setDefaultSectionSize(70) # pyright: ignore[reportOptionalMemberAccess]
+        self.table_view.verticalHeader().setDefaultSectionSize(24) # pyright: ignore[reportOptionalMemberAccess]
         table_layout.addWidget(self.table_view, stretch=1)
         self.stack.addWidget(table_container)
 
-        self.plot_widget.scene().sigMouseClicked.connect(self.on_mouse_click)
-        self.plot_widget.scene().sigMouseMoved.connect(self.on_mouse_move)
+        self.plot_widget.scene().sigMouseClicked.connect(self.on_mouse_click) # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        self.plot_widget.scene().sigMouseMoved.connect(self.on_mouse_move) # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+
+        global_plot_settings.window_size_changed.connect(self._on_window_size_changed)
 
     def _create_table_model(self):
         return SignalTimeTableModel(self.series_count, self.label_formatter, self.colors)
@@ -153,6 +160,10 @@ class TimeSeriesPlotWidget(PlotFrameBase):
     def _on_manual_range_change(self, *args):
         if self.auto_scroll_cb.isChecked():
             self.auto_scroll_cb.setChecked(False)
+
+    def _on_window_size_changed(self, value):
+        if self.auto_scroll_cb.isChecked() and hasattr(self, '_last_x_view'):
+            self.update_data(self._last_x_view, self._last_data_2d, force=True)
 
     def on_auto_scroll_toggled(self, checked):
         if checked and hasattr(self, '_last_x_view'):
@@ -227,7 +238,7 @@ class TimeSeriesPlotWidget(PlotFrameBase):
 
         if self.auto_scroll_cb.isChecked():
             current_time = x_view[-1]
-            window_size_seconds = 10
+            window_size_seconds = global_plot_settings.window_size_seconds
             min_x = max(0, current_time - window_size_seconds)
             self.plot_widget.setXRange(min_x, max(window_size_seconds, current_time))
 
@@ -252,15 +263,51 @@ class TimeSeriesPlotWidget(PlotFrameBase):
 
     # --- selection / cursor ---
 
+    def _reset_curve_highlight(self):
+        for i, curve in enumerate(self.curves):
+            curve.setPen(pg.mkPen(color=self.colors[i], width=1))
+            curve.setZValue(0)
+
+    def _apply_curve_highlight(self, index):
+        for i, curve in enumerate(self.curves):
+            if i == index:
+                curve.setPen(pg.mkPen(color=self.colors[i], width=2))
+                curve.setZValue(10)
+            else:
+                curve.setPen(pg.mkPen(color='#444444', width=1))
+                curve.setZValue(0)
+
+    def set_external_highlight(self, index):
+        """Applies the highlight driven by a paired widget's selection (e.g. the
+        matching bar chart). Does not emit sig_signal_selected, to avoid feedback loops."""
+        self.selected_series_idx = index
+        if index is None or index >= self.series_count:
+            self.v_line.hide()
+            self.h_line.hide()
+            self.hover_point.hide()
+            self.selection_panel.update_selection(None, 0, 0, "", "")
+            self._reset_curve_highlight()
+            return
+
+        self._apply_curve_highlight(index)
+        if hasattr(self, '_last_x_view') and len(self._last_x_view):
+            last_idx = len(self._last_x_view) - 1
+            r, g, b = (int(c) for c in self.colors[index][:3])
+            color_hex = f'#{r:02x}{g:02x}{b:02x}'
+            label_text = self.label_formatter(index)
+            self.selection_panel.update_selection(
+                label_text, self._last_x_view[last_idx],
+                self._last_data_2d[last_idx, index], self.unit, color_hex
+            )
+
     def clear_selection(self):
         self.selected_series_idx = None
         self.v_line.hide()
         self.h_line.hide()
         self.hover_point.hide()
         self.selection_panel.update_selection(None, 0, 0, "", "")
-        for i, curve in enumerate(self.curves):
-            curve.setPen(pg.mkPen(color=self.colors[i], width=1))
-            curve.setZValue(0)
+        self._reset_curve_highlight()
+        self.sig_signal_selected.emit(None)
 
     def on_mouse_click(self, event):
         if event.button() != Qt.MouseButton.LeftButton:
@@ -310,17 +357,11 @@ class TimeSeriesPlotWidget(PlotFrameBase):
             self.hover_point.setData(pos=[(actual_x, actual_y)])
             self.hover_point.setBrush(pg.mkBrush(self.colors[closest_series_idx]))
             self.hover_point.show()
-            color_hex = '#%02x%02x%02x' % tuple(self.colors[closest_series_idx])
+            color_hex = self.colors[closest_series_idx]
             label_text = self.label_formatter(closest_series_idx)
             self.selection_panel.update_selection(label_text, actual_x, actual_y, self.unit, color_hex)
-
-            for i, curve in enumerate(self.curves):
-                if i == closest_series_idx:
-                    curve.setPen(pg.mkPen(color=self.colors[i], width=2))
-                    curve.setZValue(10)
-                else:
-                    curve.setPen(pg.mkPen(color='#444444', width=1))
-                    curve.setZValue(0)
+            self._apply_curve_highlight(closest_series_idx)
+            self.sig_signal_selected.emit(closest_series_idx)
 
     def on_mouse_move(self, pos):
         if not self.plot_widget.sceneBoundingRect().contains(pos):
@@ -343,7 +384,7 @@ class TimeSeriesPlotWidget(PlotFrameBase):
                 self.v_line.setPos(actual_x)
                 self.h_line.setPos(actual_y)
                 self.hover_point.setData(pos=[(actual_x, actual_y)])
-                color_hex = '#%02x%02x%02x' % tuple(self.colors[self.selected_series_idx])
+                color_hex = self.colors[self.selected_series_idx]
                 label_text = self.label_formatter(self.selected_series_idx)
                 self.selection_panel.update_selection(label_text, actual_x, actual_y, self.unit, color_hex)
 
@@ -372,7 +413,7 @@ class TimeSeriesPlotWidget(PlotFrameBase):
         else:
             self.cursor_label.hide()
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event): # pyright: ignore[reportIncompatibleMethodOverride]
         if event.key() == Qt.Key.Key_Escape:
             self.clear_selection()
         super().keyPressEvent(event)
