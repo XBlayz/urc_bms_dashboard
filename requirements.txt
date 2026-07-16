@@ -1,8 +1,6 @@
-PyQt6
-pyqtgraph
-numpy
-cobs
-pyserial
-protobuf
-pandas
-PyOpenGL
+PyQt6>=6.6
+pyqtgraph>=0.13
+numpy>=1.26
+protobuf>=5.29
+pyserial>=3.5
+cobs>=1.2

@@ -24,7 +24,7 @@ La struttura principale della UI è suddivisa in _2 zone_:
 La finestra deve essere **ridimensionabile** con dei limiti minimi dettati dalle **dimensioni minime** delle _2 zone_.
 
 ## 1. Pannello laterale
-Il **pannello laterale** è configurato da _4 zone_ posiziona _verticalmente una sopra l'altra_:
+Il **Pannello laterale** è configurato da _4 zone_ posiziona _verticalmente una sopra l'altra_:
 1. **Logo**
 2. **Navigazione delle schermate principali**
 3. **Pannello di stato del BMS**
@@ -93,7 +93,7 @@ Ogni grafico deve avere una **dimensione minima**, sia in _larghezza_ che in _al
 ### 2.4. Logs
 #TODO: Da definire
 
-### 2.5. Export
+### 2.5. Settings
 #TODO: Da definire
 
 ---
