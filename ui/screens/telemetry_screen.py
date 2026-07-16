@@ -8,7 +8,7 @@ from abc import ABCMeta, abstractmethod
 from PyQt6.QtWidgets import QFrame
 
 
-class _QFrameABCMeta(type(QFrame), ABCMeta):
+class _QFrameABCMeta(type(QFrame), ABCMeta): # pyright: ignore[reportGeneralTypeIssues]
     """Metaclass merging QFrame's and ABC's metaclasses so screens can use @abstractmethod."""
     pass
 
@@ -17,7 +17,7 @@ class TelemetryScreen(QFrame, metaclass=_QFrameABCMeta):
     """Contract for screens shown in the main stacked area that consume telemetry."""
 
     @abstractmethod
-    def add_point(self, current_time, telemetry):
+    def add_point(self, current_time, state):
         """Called on every telemetry update while this screen is active."""
         raise NotImplementedError
 

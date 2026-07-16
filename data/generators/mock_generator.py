@@ -2,7 +2,8 @@ import time
 import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
-from data.proto import messages_pb2
+from data.generators.state import BmsState, BmsTelemetryState
+from data.hardware.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
 
 
 # Realistic-ish state sequence: (state, duration_seconds)
@@ -20,9 +21,8 @@ STATE_SEQUENCE = [
     (0, 3.0),   # STANDBY
 ]
 
-
 class MockDataGenerator(QObject):
-    telemetry_received = pyqtSignal(messages_pb2.BmsTelemetry) # pyright: ignore[reportAttributeAccessIssue]
+    bms_state_updated = pyqtSignal(BmsTelemetryState)
 
     def __init__(self, volt_count=138, temp_count=175):
         super().__init__()
@@ -37,7 +37,17 @@ class MockDataGenerator(QObject):
         self.temp_bases = np.linspace(25.0, 45.0, self.temp_count)
 
         self.timer = QTimer()
-        self.timer.timeout.connect(self.update)
+        self.timer.timeout.connect(self.emit_state)
+
+        # Retrieve mappings and initialize the state object directly
+        volt_mapping = get_voltage_cell_mapping()
+        temp_mapping = get_temperature_sensor_mapping()
+        self.current_state = BmsTelemetryState(
+            volt_count=self.volt_count,
+            temp_count=self.temp_count,
+            volt_mapping=volt_mapping,
+            temp_mapping=temp_mapping
+        )
 
     def start(self, interval_ms=100):
         self.timer.start(interval_ms)
@@ -73,64 +83,55 @@ class MockDataGenerator(QObject):
             return False, False, False, False
 
     def _diagnostic_state_for(self, state, elapsed):
-        # diagnostic_state is treated as a bitmask of currently-active faults
-        # (no bit layout is defined by the firmware yet, this is a v1 placeholder).
-        # In ERROR the mock raises a growing number of fault bits over time so
-        # the fault counter plate has something to demonstrate.
         if state != 3:
             return 0
         active_bits = 1 + int(elapsed) % 3
         return (1 << active_bits) - 1
 
-    def update(self):
+    def emit_state(self):
         current_time = time.time() - self.start_time
-        state = self._current_state(current_time)
-        air_pos, air_neg, pre_charge, sdc = self._contactors_for_state(state)
+        state_val = self._current_state(current_time)
+        air_pos, air_neg, pre_charge, sdc = self._contactors_for_state(state_val)
 
-        telemetry = messages_pb2.BmsTelemetry() # pyright: ignore[reportAttributeAccessIssue]
-
-        # PackState
-        pack = telemetry.pack_state
-        pack.voltage = 380.0 + np.sin(current_time * 0.1) * 10.0 + np.random.normal(0, 0.5)
-        pack.current = 50.0 + np.cos(current_time * 0.15) * 20.0 + np.random.normal(0, 0.3)
-        pack.post_air_voltage = pack.voltage - 2.0 + np.random.normal(0, 0.1)
-        pack.soc = max(0.0, min(100.0, 75.0 + np.sin(current_time * 0.05) * 15.0))
-        pack.sop_dischg = 200.0 + np.random.normal(0, 5.0)
-        pack.sop_chg = 150.0 + np.random.normal(0, 5.0)
+        # Use a short reference for cleaner code
+        s = self.current_state
 
         # BmsStatus
-        status = telemetry.status
-        status.state = state
+        try:
+            s.bms_status = BmsState(state_val)
+        except ValueError:
+            s.bms_status = BmsState.NONE
+
+        # PackState
+        s.pack_voltage = 380.0 + np.sin(current_time * 0.1) * 10.0 + np.random.normal(0, 0.5)
+        s.pack_current = 50.0 + np.cos(current_time * 0.15) * 20.0 + np.random.normal(0, 0.3)
+        s.post_air_voltage = s.pack_voltage - 2.0 + np.random.normal(0, 0.1)
+        s.soc = max(0.0, min(100.0, 75.0 + np.sin(current_time * 0.05) * 15.0))
+        s.sop_dischg = 200.0 + np.random.normal(0, 5.0)
+        s.sop_chg = 150.0 + np.random.normal(0, 5.0)
 
         # ActuatorState
-        contactors = telemetry.contactors
-        contactors.air_pos = air_pos
-        contactors.air_neg = air_neg
-        contactors.pre_charge = pre_charge
-        contactors.sdc = sdc
+        s.contactors["air_pos"] = air_pos
+        s.contactors["air_neg"] = air_neg
+        s.contactors["pre_charge"] = pre_charge
+        s.contactors["sdc"] = sdc
 
         # ChargingSettings
-        charging = telemetry.charging
-        charging.set_voltage = 400.0
-        charging.set_current = 30.0
+        s.charging_set_voltage = 400.0
+        s.charging_set_current = 30.0
 
         # Diagnostics
-        diag = telemetry.diagnostics
-        diag.diagnostic_state = self._diagnostic_state_for(state, current_time)
-        diag.ams_error = diag.diagnostic_state != 0
+        s.diagnostic_state = self._diagnostic_state_for(state_val, current_time)
+        s.ams_error = s.diagnostic_state != 0
 
-        # CellVoltages
-        cell_voltages = telemetry.cell_voltages
-        cell_voltages.device_idx = 0
+        # CellVoltages & CellTemperatures
+        # Aggiorniamo gli array numpy in-place usando [:] per mantenere intatte
+        # le reference in memoria (utile per tool di plot come pyqtgraph)
         volt_drift = np.sin(current_time * 0.1 + self.volt_bases) * 0.05
-        current_volts = self.volt_bases + volt_drift + np.random.normal(0, 0.002, self.volt_count)
-        cell_voltages.voltages.extend(current_volts.tolist())
+        s.cell_voltages[:] = self.volt_bases + volt_drift + np.random.normal(0, 0.002, self.volt_count)
 
-        # CellTemperatures
-        cell_temps = telemetry.cell_temperatures
-        cell_temps.device_idx = 0
         temp_drift = np.sin(current_time * 0.05 + self.temp_bases) * 2.0
-        current_temps = self.temp_bases + temp_drift + np.random.normal(0, 0.05, self.temp_count)
-        cell_temps.temperatures.extend(current_temps.tolist())
+        s.cell_temperatures[:] = self.temp_bases + temp_drift + np.random.normal(0, 0.05, self.temp_count)
 
-        self.telemetry_received.emit(telemetry)
+        # Emit the fully updated state object
+        self.bms_state_updated.emit(s)

@@ -169,29 +169,37 @@ class MetricsScreen(TelemetryScreen, PlotHostMixin):
         plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         plot.sig_maximize_toggled.connect(self._on_plot_maximize)
 
-    def add_point(self, current_time, telemetry):
-        if telemetry.HasField("pack_state"):
-            ps = telemetry.pack_state
-            self.soc_plot.add_point(current_time, [ps.soc])
-            self.pack_voltage_plot.add_point(current_time, [ps.voltage, ps.post_air_voltage])
-            self.pack_current_plot.add_point(current_time, [ps.current])
+    def add_point(self, current_time, state):
+        # Pack State
+        self.soc_plot.add_point(current_time, [state.soc])
+        self.pack_voltage_plot.add_point(current_time, [state.pack_voltage, state.post_air_voltage])
+        self.pack_current_plot.add_point(current_time, [state.pack_current])
 
-        if telemetry.HasField("status"):
-            self.fsm_plot.add_point(current_time, [telemetry.status.state])
+        # Status (Enum)
+        if state.bms_status is not None:
+            # Utilizziamo .value per passare l'intero al grafico (pyqtgraph richiede dati numerici)
+            self.fsm_plot.add_point(current_time, [state.bms_status.value])
 
-        if telemetry.HasField("contactors"):
-            c = telemetry.contactors
-            self.actuator_plot.add_point(current_time, [c.air_pos, c.air_neg, c.pre_charge, c.sdc])
+        # Contactors (Dict)
+        c = state.contactors
+        # Convertiamo i booleani in interi (0/1) per facilitare il plotting delle forme d'onda quadre
+        self.actuator_plot.add_point(current_time, [
+            int(c["air_pos"]),
+            int(c["air_neg"]),
+            int(c["pre_charge"]),
+            int(c["sdc"])
+        ])
 
-        if telemetry.HasField("cell_voltages"):
-            volts = list(telemetry.cell_voltages.voltages)
-            self.cell_voltages_plot.add_point(current_time, volts)
-            self.voltage_histogram.update_data(volts)
+        # Cell Voltages (Array NumPy)
+        if state.cell_voltages.size > 0:
+            # Passiamo direttamente l'array NumPy, pyqtgraph è ottimizzato per gestirli nativamente
+            self.cell_voltages_plot.add_point(current_time, state.cell_voltages)
+            self.voltage_histogram.update_data(state.cell_voltages)
 
-        if telemetry.HasField("cell_temperatures"):
-            temps = list(telemetry.cell_temperatures.temperatures)
-            self.cell_temps_plot.add_point(current_time, temps)
-            self.temp_histogram.update_data(temps)
+        # Cell Temperatures (Array NumPy)
+        if state.cell_temperatures.size > 0:
+            self.cell_temps_plot.add_point(current_time, state.cell_temperatures)
+            self.temp_histogram.update_data(state.cell_temperatures)
 
     def clear_selection(self):
         for plot in (

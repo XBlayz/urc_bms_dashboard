@@ -50,7 +50,7 @@ def main():
         )
 
     # Wire generator telemetry to window dispatcher
-    generator.telemetry_received.connect(window.on_telemetry_received)
+    generator.bms_state_updated.connect(window.on_telemetry_received)
 
     generator.start(500)
 

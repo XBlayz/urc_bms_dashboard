@@ -83,7 +83,7 @@ class DashboardWindow(QMainWindow):
 
         self.stack.setCurrentIndex(0)
 
-    def on_telemetry_received(self, telemetry):
+    def on_telemetry_received(self, state):
         if self._start_time is None:
             self._start_time = time.time()
         current_time = time.time() - self._start_time
@@ -91,41 +91,45 @@ class DashboardWindow(QMainWindow):
         self.sidebar.update_connection_status(connected=True, is_mock=self.is_mock)
         self.sidebar.uptime_plate.update_value(current_time)
 
-        if telemetry.HasField("status"):
-            self.sidebar.fsm_plate.update_value(telemetry.status.state)
+        # Status (Enum)
+        if state.bms_status is not None:
+            # Assumendo che il plate si aspetti l'intero originale, usiamo .value
+            self.sidebar.fsm_plate.update_value(state.bms_status.value)
 
-        if telemetry.HasField("pack_state"):
-            ps = telemetry.pack_state
-            self.sidebar.pack_voltage_plate.update_value(f"{ps.voltage:.1f}")
-            self.sidebar.pack_voltage_post_air_plate.update_value(f"{ps.post_air_voltage:.1f}")
-            self.sidebar.pack_current_plate.update_value(f"{ps.current:.1f}")
-            self.sidebar.soc_plate.update_value(f"{ps.soc:.1f}")
-            self.sidebar.sop_dischg_plate.update_value(f"{ps.sop_dischg:.1f}")
-            self.sidebar.sop_chg_plate.update_value(f"{ps.sop_chg:.1f}")
+        # Pack State
+        self.sidebar.pack_voltage_plate.update_value(f"{state.pack_voltage:.1f}")
+        self.sidebar.pack_voltage_post_air_plate.update_value(f"{state.post_air_voltage:.1f}")
+        self.sidebar.pack_current_plate.update_value(f"{state.pack_current:.1f}")
+        self.sidebar.soc_plate.update_value(f"{state.soc:.1f}")
+        self.sidebar.sop_dischg_plate.update_value(f"{state.sop_dischg:.1f}")
+        self.sidebar.sop_chg_plate.update_value(f"{state.sop_chg:.1f}")
 
-        if telemetry.HasField("contactors"):
-            c = telemetry.contactors
-            self.sidebar.actuator_plates["air_pos"].update_value(c.air_pos)
-            self.sidebar.actuator_plates["air_neg"].update_value(c.air_neg)
-            self.sidebar.actuator_plates["pre_charge"].update_value(c.pre_charge)
-            self.sidebar.actuator_plates["sdc"].update_value(c.sdc)
+        # Contactors (Dict)
+        c = state.contactors
+        self.sidebar.actuator_plates["air_pos"].update_value(c["air_pos"])
+        self.sidebar.actuator_plates["air_neg"].update_value(c["air_neg"])
+        self.sidebar.actuator_plates["pre_charge"].update_value(c["pre_charge"])
+        self.sidebar.actuator_plates["sdc"].update_value(c["sdc"])
 
-        if telemetry.HasField("diagnostics"):
-            self.sidebar.fault_plate.update_value(telemetry.diagnostics.diagnostic_state)
+        # Diagnostics
+        self.sidebar.fault_plate.update_value(state.diagnostic_state)
 
-        if telemetry.HasField("cell_voltages") and telemetry.HasField("cell_temperatures"):
-            volts = np.array(telemetry.cell_voltages.voltages, dtype=np.float64)
-            temps = np.array(telemetry.cell_temperatures.temperatures, dtype=np.float64)
-
+        # Cell Voltages (Already NumPy arrays)
+        volts = state.cell_voltages
+        if volts.size > 0:
             v_min, v_max, v_avg = float(np.min(volts)), float(np.max(volts)), float(np.mean(volts))
             self.sidebar.voltage_stats_plate.update_stats(v_min, v_max, v_avg, v_max - v_min)
 
+        # Cell Temperatures (Already NumPy arrays)
+        temps = state.cell_temperatures
+        if temps.size > 0:
             t_min, t_max, t_avg = float(np.min(temps)), float(np.max(temps)), float(np.mean(temps))
             self.sidebar.temp_stats_plate.update_stats(t_min, t_max, t_avg, t_max - t_min)
 
+        # Forward the new state object to the active screen
         active_screen = self.stack.currentWidget()
         if isinstance(active_screen, TelemetryScreen):
-            active_screen.add_point(current_time, telemetry)
+            active_screen.add_point(current_time, state)
 
     def on_nav_clicked(self, key):
         if key in self._nav_index_map:
