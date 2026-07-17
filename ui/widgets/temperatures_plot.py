@@ -10,11 +10,12 @@ class TemperaturesPlotWidget(TimeSeriesPlotWidget):
         self.mapping = mapping
         formatter = label_formatter_callback or self._default_label
         super().__init__(
-            title=Strings.TITLE_TEMPERATURES,
-            unit=Strings.UNIT_TEMP,
+            title=Strings.TITLE_VOLTAGES,
+            unit=Strings.UNIT_VOLTAGE,
             series_count=len(mapping),
             label_formatter_callback=formatter,
-            empty_text=Strings.EMPTY_SENSOR
+            empty_text=Strings.EMPTY_CELL,
+            stats_mode="instantaneous"
         )
 
     def _default_label(self, i):

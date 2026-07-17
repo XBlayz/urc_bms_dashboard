@@ -21,7 +21,7 @@ class TimeSeriesPlotWidget(PlotFrameBase):
 
     def __init__(self, title, unit, series_count, label_formatter_callback,
                  empty_text=Strings.EMPTY_CELL, colors=None,
-                 y_zoom_enabled=True, fit_mode="xy"):
+                 y_zoom_enabled=True, fit_mode="xy", stats_mode="instantaneous"):
         self.unit = unit
         self.series_count = series_count
         self.label_formatter = label_formatter_callback
@@ -29,6 +29,7 @@ class TimeSeriesPlotWidget(PlotFrameBase):
         self._signal_colors = colors
         self._y_zoom_enabled = y_zoom_enabled
         self._fit_mode = fit_mode
+        self.stats_mode = stats_mode
 
         self.curves = []
         self.colors = []
@@ -255,11 +256,47 @@ class TimeSeriesPlotWidget(PlotFrameBase):
                         padding = 0.1
                     self.plot_widget.setYRange(y_min - padding, y_max + padding)
 
-        current_data = data_2d[len(x_view) - 1, :]
-        d_min = np.min(current_data)
-        d_max = np.max(current_data)
-        d_std = np.std(current_data)
-        self.stats_lbl.setText(Strings.FMT_STATS.format(std=d_std, max=d_max, min=d_min, unit=self.unit))
+        self._update_stats(x_view, data_2d)
+
+    def _update_stats(self, x_view, data_2d):
+        """Instantaneous multi-signal stats (min/max/avg/std/delta over the latest
+        sample across visible signals), or time-window single-signal stats
+        (min/max/avg/std per signal over the whole visible window), per stats_mode."""
+        visible_mask = np.array(self._series_visible, dtype=bool)
+        if not np.any(visible_mask):
+            self.stats_lbl.setText(Strings.STATS_EMPTY)
+            return
+
+        if self.stats_mode == "window":
+            parts = []
+            for i in range(self.series_count):
+                if not visible_mask[i]:
+                    continue
+                col = data_2d[:len(x_view), i]
+                col = col[~np.isnan(col)]
+                if col.size == 0:
+                    continue
+                parts.append(Strings.FMT_STATS_WINDOW_SIGNAL.format(
+                    label=self.label_formatter(i),
+                    min=np.min(col), max=np.max(col),
+                    avg=np.mean(col), std=np.std(col), unit=self.unit
+                ))
+            self.stats_lbl.setText("   |   ".join(parts) if parts else Strings.STATS_EMPTY)
+            return
+
+        current_data = data_2d[len(x_view) - 1, :][visible_mask]
+        current_data = current_data[~np.isnan(current_data)]
+        if current_data.size == 0:
+            self.stats_lbl.setText(Strings.STATS_EMPTY)
+            return
+
+        d_min = float(np.min(current_data))
+        d_max = float(np.max(current_data))
+        self.stats_lbl.setText(Strings.FMT_STATS_INSTANT.format(
+            min=d_min, max=d_max,
+            avg=float(np.mean(current_data)), std=float(np.std(current_data)),
+            delta=d_max - d_min, unit=self.unit
+        ))
 
     # --- selection / cursor ---
 

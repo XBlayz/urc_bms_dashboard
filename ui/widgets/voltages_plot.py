@@ -14,7 +14,8 @@ class VoltagesPlotWidget(TimeSeriesPlotWidget):
             unit=Strings.UNIT_VOLTAGE,
             series_count=len(mapping),
             label_formatter_callback=formatter,
-            empty_text=Strings.EMPTY_CELL
+            empty_text=Strings.EMPTY_CELL,
+            stats_mode="instantaneous"
         )
 
     def _default_label(self, i):

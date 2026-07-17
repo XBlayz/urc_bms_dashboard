@@ -13,6 +13,7 @@ from ui.widgets.selection_panel import SelectionPanel
 from ui.widgets.zoomable_table_view import ZoomableTableView
 from ui.widgets.ctrl_zoom_viewbox import CtrlZoomViewBox
 from ui.widgets.plot_settings import global_plot_settings
+from ui.widgets.multi_cursor_mixin import MultiCursorMixin
 from ui.fsm_state import fsm_state_labels
 from ui.strings import Strings
 from ui.theme import CurrentTheme as Theme
@@ -26,11 +27,12 @@ class SimpleTimeSeriesPlot(TimeSeriesPlotWidget):
             series_count=1,
             label_formatter_callback=label_formatter_callback,
             empty_text=empty_text,
-            colors=colors
+            colors=colors,
+            stats_mode="window"
         )
 
 
-class EnumPlot(TimeSeriesPlotWidget):
+class EnumPlot(TimeSeriesPlotWidget, MultiCursorMixin):
     """time_series_plot_enum (UI_definition.md 2.1.1): Y-zoom locked, Fit-X only,
     per-segment coloring by state, transition-only table view."""
 
@@ -42,6 +44,7 @@ class EnumPlot(TimeSeriesPlotWidget):
             empty_text=empty_text, y_zoom_enabled=False, fit_mode="x"
         )
         self.plot_widget.getAxis('left').setTicks(None)
+        self._init_multi_cursor(self._plot_container)
 
     def _create_table_model(self): # pyright: ignore[reportIncompatibleMethodOverride]
         return TransitionTableModel(
@@ -120,6 +123,13 @@ class EnumPlot(TimeSeriesPlotWidget):
         state_name = self.enum_map.get(current_state, "--")
         self.stats_lbl.setText(f"STATE: {state_name}")
 
+        # Keep the cursor(s) aligned to the mouse even if it hasn't moved
+        # (e.g. autoscroll just shifted which sample sits under the pointer).
+        if self.selected_series_idx is not None and self._last_mouse_scene_pos is not None:
+            self.on_mouse_move(self._last_mouse_scene_pos)
+        else:
+            self._mc_reposition_fixed_labels()
+
     def on_mouse_click(self, event):
         if event.button() != Qt.MouseButton.LeftButton:
             return
@@ -146,6 +156,14 @@ class EnumPlot(TimeSeriesPlotWidget):
             return
 
         label = self.enum_map.get(state, "NONE")
+
+        if self.selected_series_idx == 0:
+            # Signal already selected: pin a time-fixed cursor instead of moving the live one.
+            self._mc_add_fixed_cursor(actual_x, f"T: {actual_x:.2f}s\n{label}")
+            return
+
+        self._mc_clear_fixed_cursors()
+        self.selected_series_idx = 0
         color = Theme.STATE_COLORS.get(label, "#888888")
 
         self.v_line.setPos(actual_x)
@@ -153,14 +171,36 @@ class EnumPlot(TimeSeriesPlotWidget):
         self.selection_panel.update_selection(self.label_formatter(0), actual_x, label, "", color)
 
     def on_mouse_move(self, pos):
-        pass
+        self._last_mouse_scene_pos = pos
+        self._mc_reposition_fixed_labels()
+
+        if self.selected_series_idx is None:
+            return
+        if not self.plot_widget.sceneBoundingRect().contains(pos):
+            return
+        if not hasattr(self, '_last_x_view') or len(self._last_x_view) == 0:
+            return
+
+        vb = self.plot_widget.getViewBox()
+        mouse_point = vb.mapSceneToView(pos)
+        idx = int(np.argmin(np.abs(self._last_x_view - mouse_point.x())))
+        actual_x = self._last_x_view[idx]
+        state = int(self._last_data_2d[idx, 0])
+        label = self.enum_map.get(state, "NONE")
+        color = Theme.STATE_COLORS.get(label, "#888888")
+
+        self.v_line.setPos(actual_x)
+        self.v_line.show()
+        self.selection_panel.update_selection(self.label_formatter(0), actual_x, label, "", color)
 
     def clear_selection(self):
+        self.selected_series_idx = None
         self.v_line.hide()
         self.selection_panel.update_selection(None, 0, 0, "", "")
+        self._mc_clear_fixed_cursors()
 
 
-class StackedBoolPlot(PlotFrameBase):
+class StackedBoolPlot(PlotFrameBase, MultiCursorMixin):
     """time_series_stacked_plot_bool (UI_definition.md 2.1.2): boolean signals as stacked
     square-wave bands, Y-zoom locked, Fit-X only, transition-only table view."""
 
@@ -185,6 +225,7 @@ class StackedBoolPlot(PlotFrameBase):
 
         super().__init__(title, show_table_toggle=True, show_pause=True)
         self._build_pages()
+        self._init_multi_cursor(self._plot_page)
 
     def _build_extra_header_buttons(self, header_layout):
         self.auto_scroll_cb = ToggleButton(Strings.BTN_AUTO_SCROLL, checked=True)
@@ -194,6 +235,7 @@ class StackedBoolPlot(PlotFrameBase):
 
     def _build_pages(self):
         plot_page = QFrame()
+        self._plot_page = plot_page
         plot_layout = QVBoxLayout(plot_page)
         plot_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -340,6 +382,13 @@ class StackedBoolPlot(PlotFrameBase):
         active_count = np.sum(data_2d[len(x_view) - 1, :])
         self.stats_lbl.setText(f"ACTIVE: {int(active_count)}/{self.series_count}")
 
+        # Keep the cursor(s) aligned to the mouse even if it hasn't moved
+        # (e.g. autoscroll just shifted which sample sits under the pointer).
+        if self.selected_series_idx is not None and self._last_mouse_scene_pos is not None:
+            self.on_mouse_move(self._last_mouse_scene_pos)
+        else:
+            self._mc_reposition_fixed_labels()
+
     def on_mouse_click(self, event):
         if event.button() != Qt.MouseButton.LeftButton:
             return
@@ -371,14 +420,21 @@ class StackedBoolPlot(PlotFrameBase):
             self.clear_selection()
             return
 
+        val = bool(self._last_data_2d[idx, band_idx])
+        label = self.series_labels[band_idx]
+        text = Strings.LBL_TRUE if val else Strings.LBL_FALSE
+
+        if band_idx == self.selected_series_idx:
+            # Signal already selected: pin a time-fixed cursor instead of moving the live one.
+            self._mc_add_fixed_cursor(actual_x, f"T: {actual_x:.2f}s\n{label}: {text}")
+            return
+
+        self._mc_clear_fixed_cursors()
         self.selected_series_idx = band_idx
         self.v_line.setPos(actual_x)
         self.v_line.show()
 
-        val = bool(self._last_data_2d[idx, band_idx])
-        label = self.series_labels[band_idx]
         color = self.colors[band_idx % len(self.colors)]
-        text = Strings.LBL_TRUE if val else Strings.LBL_FALSE
         self.selection_panel.update_selection(label, actual_x, text, "", color)
         self._apply_curve_highlight(band_idx)
 
@@ -394,7 +450,30 @@ class StackedBoolPlot(PlotFrameBase):
             item.setBrush(pg.mkBrush(color + ("80" if i == index else "20")))
 
     def on_mouse_move(self, pos):
-        pass
+        self._last_mouse_scene_pos = pos
+        self._mc_reposition_fixed_labels()
+
+        if self.selected_series_idx is None:
+            return
+        if not self.plot_widget.sceneBoundingRect().contains(pos):
+            return
+        if not hasattr(self, '_last_x_view') or len(self._last_x_view) == 0:
+            return
+
+        vb = self.plot_widget.getViewBox()
+        mouse_point = vb.mapSceneToView(pos)
+        idx = int(np.argmin(np.abs(self._last_x_view - mouse_point.x())))
+        actual_x = self._last_x_view[idx]
+
+        band_idx = self.selected_series_idx
+        val = bool(self._last_data_2d[idx, band_idx])
+        label = self.series_labels[band_idx]
+        color = self.colors[band_idx % len(self.colors)]
+        text = Strings.LBL_TRUE if val else Strings.LBL_FALSE
+
+        self.v_line.setPos(actual_x)
+        self.v_line.show()
+        self.selection_panel.update_selection(label, actual_x, text, "", color)
 
     def reset_data(self):
         self.buffer.reset()
@@ -415,6 +494,7 @@ class StackedBoolPlot(PlotFrameBase):
             curve.setPen(pg.mkPen(color=self.colors[i % len(self.colors)], width=2))
         for i, item in enumerate(self.fill_items):
             item.setBrush(pg.mkBrush(self.colors[i % len(self.colors)] + "40"))
+        self._mc_clear_fixed_cursors()
 
 
 class BarChartWidget(PlotFrameBase):

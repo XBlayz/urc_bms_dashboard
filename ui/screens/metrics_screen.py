@@ -25,7 +25,8 @@ class DualVoltagesPlot(TimeSeriesPlotWidget):
             series_count=2,
             label_formatter_callback=lambda i: ["Pre AIR", "Post AIR"][i],
             empty_text="No voltage data",
-            colors=[Theme.SIGNAL_COLORS["pack_voltage_pre_air"], Theme.SIGNAL_COLORS["pack_voltage_post_air"]]
+            colors=[Theme.SIGNAL_COLORS["pack_voltage_pre_air"], Theme.SIGNAL_COLORS["pack_voltage_post_air"]],
+            stats_mode="window"
         )
         self.setMinimumHeight(Theme.H_SIZE_S)
         self.setMinimumWidth(Theme.W_SIZE_S)

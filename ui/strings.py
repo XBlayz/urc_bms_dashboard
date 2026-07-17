@@ -74,6 +74,8 @@ class Strings:
     FMT_POWER = "{value:.1f} W"
     FMT_STAT = "{label}: {value:.3f}{unit}"
     FMT_STAT_DELTA = "{label}: {value:.3f}{unit} (delta {delta:.3f}{unit})"
+    FMT_STATS_INSTANT = "MIN: {min:.3f}{unit}   MAX: {max:.3f}{unit}   AVG: {avg:.3f}{unit}   STD: {std:.3f}{unit}   DELTA: {delta:.3f}{unit}"
+    FMT_STATS_WINDOW_SIGNAL = "{label}: MIN {min:.3f}{unit}  MAX {max:.3f}{unit}  AVG {avg:.3f}{unit}  STD {std:.3f}{unit}"
 
     # sidebar state panel
     LBL_UPTIME = "UPTIME"
