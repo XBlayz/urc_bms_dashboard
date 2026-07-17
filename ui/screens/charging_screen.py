@@ -36,64 +36,47 @@ class ChargingScreen(TelemetryScreen, PlotHostMixin):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
+        # --- Row 1: Plates | Controls ---
         top_row = QHBoxLayout()
         top_row.setSpacing(15)
 
-        info_panel = QWidget()
-        info_panel.setStyleSheet(Theme.charging_control())
-        info_panel.setMinimumWidth(320)
-        info_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        info_layout = QVBoxLayout(info_panel)
-        info_layout.setContentsMargins(15, 15, 15, 15)
-        info_layout.setSpacing(10)
+        plates_panel = QWidget()
+        plates_panel.setStyleSheet(Theme.charging_control())
+        plates_panel.setMinimumWidth(320)
+        plates_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        plates_layout = QVBoxLayout(plates_panel)
+        plates_layout.setContentsMargins(15, 15, 15, 15)
+        plates_layout.setSpacing(10)
 
         self.charging_state_plate = EnumStatePlate(Strings.LBL_CHARGING_STATE, fsm_state_labels())
-        info_layout.addWidget(self.charging_state_plate)
+        plates_layout.addWidget(self.charging_state_plate)
 
         self.charge_duration_plate = TimePlate(Strings.LBL_CHARGE_DURATION)
-        info_layout.addWidget(self.charge_duration_plate)
+        plates_layout.addWidget(self.charge_duration_plate)
 
         self.estimated_remaining_plate = TimePlate(Strings.LBL_ESTIMATED_REMAINING)
-        info_layout.addWidget(self.estimated_remaining_plate)
+        plates_layout.addWidget(self.estimated_remaining_plate)
 
-        info_layout.addSpacing(10)
+        plates_layout.addSpacing(10)
 
         self.pack_voltage_plate = UnitPlate(Strings.LBL_CHARGE_VOLTAGE, unit="V")
-        info_layout.addWidget(self.pack_voltage_plate)
+        plates_layout.addWidget(self.pack_voltage_plate)
 
         self.pack_current_plate = UnitPlate(Strings.LBL_CHARGE_CURRENT, unit="A")
-        info_layout.addWidget(self.pack_current_plate)
+        plates_layout.addWidget(self.pack_current_plate)
 
         self.soc_plate = UnitPlate(Strings.LBL_SOC, unit="%")
-        info_layout.addWidget(self.soc_plate)
+        plates_layout.addWidget(self.soc_plate)
 
-        info_layout.addSpacing(10)
-
-        history_row = ResponsiveGrid(min_item_width=350)
-        self.soc_plot = self._build_history_plot(
-            Strings.LBL_SOC_HISTORY, "%", "SoC", "No SoC history", Theme.SIGNAL_COLORS["soc"]
-        )
-        history_row.add_item(self.soc_plot)
-
-        self.voltage_plot = self._build_history_plot(
-            Strings.LBL_VOLTAGE_HISTORY, "V", Strings.LBL_CHARGE_VOLTAGE, "No voltage history",
-            Theme.SIGNAL_COLORS["pack_voltage_pre_air"]
-        )
-        history_row.add_item(self.voltage_plot)
-
-        self.current_plot = self._build_history_plot(
-            Strings.LBL_CURRENT_HISTORY, "A", Strings.LBL_CHARGE_CURRENT, "No current history",
-            Theme.SIGNAL_COLORS["pack_current"]
-        )
-        history_row.add_item(self.current_plot)
-
-        info_layout.addWidget(history_row, stretch=1)
+        plates_layout.addSpacing(10)
 
         balancing_lbl = QLabel(Strings.LBL_BALANCING + ": --")
         balancing_lbl.setStyleSheet("color: #888888; font-size: 12px;")
-        info_layout.addWidget(balancing_lbl)
+        plates_layout.addWidget(balancing_lbl)
 
-        top_row.addWidget(info_panel, stretch=2)
+        plates_layout.addStretch()
+
+        top_row.addWidget(plates_panel, stretch=2)
 
         controls_panel = QWidget()
         controls_panel.setStyleSheet(Theme.charging_control())
@@ -151,7 +134,34 @@ class ChargingScreen(TelemetryScreen, PlotHostMixin):
         controls_layout.addStretch()
         top_row.addWidget(controls_panel, stretch=1)
 
-        layout.addLayout(top_row, stretch=1)
+        layout.addLayout(top_row)
+
+        # --- Plots, one per row, full width (Plot(SoC), Plot(Voltage), Plot(Current)) ---
+        soc_row = ResponsiveGrid(min_item_width=350)
+        self.soc_plot = self._build_history_plot(
+            Strings.LBL_SOC_HISTORY, "%", "SoC", "No SoC history", Theme.SIGNAL_COLORS["soc"]
+        )
+        self.soc_plot.setMinimumHeight(Theme.H_SIZE_S)
+        soc_row.add_item(self.soc_plot)
+        layout.addWidget(soc_row, stretch=1)
+
+        voltage_row = ResponsiveGrid(min_item_width=350)
+        self.voltage_plot = self._build_history_plot(
+            Strings.LBL_VOLTAGE_HISTORY, "V", Strings.LBL_CHARGE_VOLTAGE, "No voltage history",
+            Theme.SIGNAL_COLORS["pack_voltage_pre_air"]
+        )
+        self.voltage_plot.setMinimumHeight(Theme.H_SIZE_S)
+        voltage_row.add_item(self.voltage_plot)
+        layout.addWidget(voltage_row, stretch=1)
+
+        current_row = ResponsiveGrid(min_item_width=350)
+        self.current_plot = self._build_history_plot(
+            Strings.LBL_CURRENT_HISTORY, "A", Strings.LBL_CHARGE_CURRENT, "No current history",
+            Theme.SIGNAL_COLORS["pack_current"]
+        )
+        self.current_plot.setMinimumHeight(Theme.H_SIZE_S)
+        current_row.add_item(self.current_plot)
+        layout.addWidget(current_row, stretch=1)
 
         stack.addWidget(normal_page)
         self._init_plot_host(stack)
