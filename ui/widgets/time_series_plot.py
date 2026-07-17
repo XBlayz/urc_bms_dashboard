@@ -371,47 +371,43 @@ class TimeSeriesPlotWidget(PlotFrameBase):
             self.cursor_label.hide()
             return
 
+        if self.selected_series_idx is None:
+            self.cursor_label.hide()
+            return
+
         vb = self.plot_widget.getViewBox()
         mouse_point = vb.mapSceneToView(pos)
         hover_x = mouse_point.x()
 
-        if self.selected_series_idx is not None:
-            x_data, y_data = self.curves[self.selected_series_idx].getData()
-            if x_data is not None and len(x_data) > 0:
-                closest_x_idx = np.argmin(np.abs(x_data - hover_x))
-                actual_x = x_data[closest_x_idx]
-                actual_y = y_data[closest_x_idx]
-                self.v_line.setPos(actual_x)
-                self.h_line.setPos(actual_y)
-                self.hover_point.setData(pos=[(actual_x, actual_y)])
-                color_hex = self.colors[self.selected_series_idx]
-                label_text = self.label_formatter(self.selected_series_idx)
-                self.selection_panel.update_selection(label_text, actual_x, actual_y, self.unit, color_hex)
-
-        visible_indices = [i for i in range(self.series_count) if self._series_visible[i]]
-        if not visible_indices:
+        x_data, y_data = self.curves[self.selected_series_idx].getData()
+        if x_data is None or len(x_data) == 0:
             self.cursor_label.hide()
             return
 
-        x_data, _ = self.curves[visible_indices[0]].getData()
-        if x_data is not None and len(x_data) > 0:
-            closest_x_idx = np.argmin(np.abs(x_data - hover_x))
-            actual_x = x_data[closest_x_idx]
-            lines = [f"T: {actual_x:.2f}s"]
-            for i in visible_indices:
-                _, y_data = self.curves[i].getData()
-                if y_data is not None and closest_x_idx < len(y_data):
-                    val = y_data[closest_x_idx]
-                    label = self.label_formatter(i)
-                    lines.append(f"{label}: {val:.3f}")
-            if len(lines) > 1:
-                self.cursor_label.setText("\n".join(lines))
-                plot_pos = self.plot_widget.mapFromScene(pos)
-                container_pos = self.plot_widget.mapTo(self._plot_container, plot_pos)
-                self.cursor_label.move(int(container_pos.x()) + 15, int(container_pos.y()) - 10)
-                self.cursor_label.show()
-        else:
-            self.cursor_label.hide()
+        closest_x_idx = np.argmin(np.abs(x_data - hover_x))
+        actual_x = x_data[closest_x_idx]
+        actual_y = y_data[closest_x_idx]
+
+        self.v_line.setPos(actual_x)
+        self.v_line.show()
+        self.h_line.setPos(actual_y)
+        self.h_line.show()
+        self.hover_point.setData(pos=[(actual_x, actual_y)])
+        self.hover_point.setBrush(pg.mkBrush(self.colors[self.selected_series_idx]))
+        self.hover_point.show()
+
+        color_hex = self.colors[self.selected_series_idx]
+        label_text = self.label_formatter(self.selected_series_idx)
+        self.selection_panel.update_selection(label_text, actual_x, actual_y, self.unit, color_hex)
+
+        # Anchor the floating cursor plate to the intersection point between the
+        # selected curve and the cursor, not to the raw mouse position.
+        self.cursor_label.setText(f"T: {actual_x:.2f}s\n{label_text}: {actual_y:.3f}")
+        scene_pt = vb.mapViewToScene(pg.Point(float(actual_x), float(actual_y)))
+        plot_pos = self.plot_widget.mapFromScene(scene_pt)
+        container_pos = self.plot_widget.mapTo(self._plot_container, plot_pos)
+        self.cursor_label.move(int(container_pos.x()) + 15, int(container_pos.y()) - 10)
+        self.cursor_label.show()
 
     def keyPressEvent(self, event): # pyright: ignore[reportIncompatibleMethodOverride]
         if event.key() == Qt.Key.Key_Escape:
