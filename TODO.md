@@ -8,6 +8,7 @@
 - [ ] Add SoP in pack current plot
 - [ ] Fix autoscrot in table view
 - [ ] Better aestheatic scrollbar
+- [ ] Cursor measurements data view
 
 # Features
 - [ ] "Override" screen
