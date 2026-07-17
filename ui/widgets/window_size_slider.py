@@ -31,6 +31,7 @@ class WindowSizeSlider(QFrame):
         self.slider.setMaximum(MAX_WINDOW_SECONDS)
         self.slider.setValue(int(global_plot_settings.window_size_seconds))
         self.slider.valueChanged.connect(self._on_slider_changed)
+        self.slider.setStyleSheet("background: transparent;")
         row.addWidget(self.slider, stretch=1)
 
         self.value_lbl = QLabel(f"{self.slider.value()}s")
