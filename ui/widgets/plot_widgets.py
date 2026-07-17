@@ -511,6 +511,10 @@ class BarChartWidget(PlotFrameBase):
                 self.heatmap, self.matrix_row_label, self.matrix_col_label,
             )
             self.matrix_view.setModel(self.matrix_model)
+            for r in range(self.matrix_rows):
+                self.matrix_view.setColumnWidth(r, 70)
+            for c in range(self.matrix_cols):
+                self.matrix_view.setRowHeight(c, 40)
             matrix_layout.addWidget(self.matrix_view, stretch=1)
             self.stack.addWidget(matrix_page)
 

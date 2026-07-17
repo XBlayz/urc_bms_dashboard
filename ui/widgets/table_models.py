@@ -133,19 +133,19 @@ class MatrixTableModel(QAbstractTableModel):
     def __init__(self, mapping, rows, cols, heatmap, row_label_fmt, col_label_fmt, parent=None):
         super().__init__(parent)
         self.mapping = mapping
-        self.rows = rows
-        self.cols = cols
+        self.rows = cols
+        self.cols = rows
         self.heatmap = heatmap
         self.row_label_fmt = row_label_fmt
         self.col_label_fmt = col_label_fmt
         self._values = [[None for _ in range(cols)] for _ in range(rows)]
 
     def update_data(self, values_1d):
-        for flat_idx, (r, c) in enumerate(self.mapping):
+        for flat_idx, (c, r) in enumerate(self.mapping):
             if flat_idx >= len(values_1d):
                 break
             if r < self.rows and c < self.cols:
-                self._values[r][c] = float(values_1d[flat_idx])
+                self._values[c][r] = float(values_1d[flat_idx])
         self.layoutChanged.emit()
 
     def rowCount(self, parent=None):
@@ -157,7 +157,7 @@ class MatrixTableModel(QAbstractTableModel):
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
-        val = self._values[index.row()][index.column()]
+        val = self._values[index.column()][index.row()]
         if role == Qt.ItemDataRole.DisplayRole:
             return f"{val:.2f}" if val is not None else ""
         if role == Qt.ItemDataRole.BackgroundRole and self.heatmap is not None and val is not None:
@@ -170,5 +170,5 @@ class MatrixTableModel(QAbstractTableModel):
         if role != Qt.ItemDataRole.DisplayRole:
             return None
         if orientation == Qt.Orientation.Horizontal:
-            return self.col_label_fmt(section)
-        return self.row_label_fmt(section)
+            return self.row_label_fmt(section)
+        return self.col_label_fmt(section)
