@@ -41,6 +41,7 @@ class Strings:
     BTN_SELECT_ALL = "ALL"
     BTN_DESELECT_ALL = "NONE"
     BTN_MATRIX_VIEW = "MATRIX VIEW"
+    BTN_SMART_SCALE = "SMART SCALE"
     STATS_EMPTY = "STD: --   MAX: --   MIN: --"
     FMT_STATS = "STD: {std:.1f}   MAX: {max:.3f}{unit}   MIN: {min:.3f}{unit}"
     LBL_TRUE = "True"

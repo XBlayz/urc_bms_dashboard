@@ -484,15 +484,24 @@ class BarChartWidget(PlotFrameBase):
         self._series_visible = [True] * bar_count
         self._default_colors = ["#00AAFF"] * bar_count
         self.selected_idx = None
+        self._smart_scale = True
 
         super().__init__(title, show_table_toggle=False, show_pause=True)
         self._build_pages()
 
     def _build_extra_header_buttons(self, header_layout):
+        self.smart_scale_cb = ToggleButton(Strings.BTN_SMART_SCALE, checked=True)
+        self.smart_scale_cb.toggled.connect(self.on_smart_scale_toggled)
+        header_layout.addWidget(self.smart_scale_cb)
+
         if self.matrix_mapping is not None:
             self.matrix_cb = ToggleButton(Strings.BTN_MATRIX_VIEW, checked=False)
             self.matrix_cb.toggled.connect(self.on_matrix_toggled)
             header_layout.addWidget(self.matrix_cb)
+
+    def on_smart_scale_toggled(self, checked):
+        self._smart_scale = checked
+        self._render_bars()
 
     def _build_pages(self):
         bars_page = QFrame()
@@ -634,6 +643,12 @@ class BarChartWidget(PlotFrameBase):
 
         self.avg_line.setPos(mean_val)
         self.avg_line.show()
+
+        if self._smart_scale:
+            padding = (d_max - d_min) * 0.1 or 0.1
+            self.plot_widget.setYRange(d_min - padding, d_max + padding)
+        else:
+            self.plot_widget.enableAutoRange(axis='y')
 
         delta_x = float(x_all[0]) - 1.5 if len(x_all) else -1.5
         self.delta_bar_item = pg.BarGraphItem(
