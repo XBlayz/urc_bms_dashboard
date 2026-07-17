@@ -1,5 +1,5 @@
 import numpy as np
-from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget, QScrollArea, QSizePolicy
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QScrollArea, QSizePolicy
 from PyQt6.QtCore import Qt, QTimer
 
 from ui.sidebar import Sidebar
@@ -12,6 +12,8 @@ from ui.screens.settings_screen import SettingsScreen
 from ui.strings import Strings
 from ui.theme import CurrentTheme as Theme
 from ui.nav_config import NAV_ENTRIES
+from ui.widgets.stacked_widget import CurrentPageStackedWidget
+from ui.widgets.plot_frame_base import PlotFrameBase
 from data.hardware.hardware_mapping import get_voltage_cell_mapping, get_temperature_sensor_mapping
 
 
@@ -45,7 +47,6 @@ class DashboardWindow(QMainWindow):
         self.render_timer.start(33)
 
     def init_ui(self):
-        # ... (Rimane identico al tuo codice originale) ...
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -57,18 +58,20 @@ class DashboardWindow(QMainWindow):
         self.sidebar.nav_clicked.connect(self.on_nav_clicked)
         main_layout.addWidget(self.sidebar)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-        self.stack = QStackedWidget()
+        # Sizes to the current page only, so pages smaller than the largest
+        # screen don't force an unnecessary scrollbar (see CurrentPageStackedWidget).
+        self.stack = CurrentPageStackedWidget()
         self.stack.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        scroll.setWidget(self.stack)
+        self.scroll_area.setWidget(self.stack)
 
         self.stack.currentChanged.connect(self._on_screen_changed)
-        main_layout.addWidget(scroll, stretch=1)
+        main_layout.addWidget(self.scroll_area, stretch=1)
 
         screen_factories = {
             "metrics": lambda: MetricsScreen(self.volt_mapping, self.temp_mapping),
@@ -84,10 +87,22 @@ class DashboardWindow(QMainWindow):
             self.stack.addWidget(screen)
             self._nav_index_map[entry.key] = i
 
+            # While any plot on this screen is maximized, the main scroll area
+            # must not scroll (the maximized plot already fills the viewport).
+            for plot in screen.findChildren(PlotFrameBase):
+                plot.sig_maximize_toggled.connect(self._on_plot_maximize_state_changed)
+
         self.metrics_screen = self.stack.widget(self._nav_index_map["metrics"])
         self.charging_screen = self.stack.widget(self._nav_index_map["charging"])
 
         self.stack.setCurrentIndex(0)
+
+    def _on_plot_maximize_state_changed(self, maximized):
+        policy = (
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff if maximized
+            else Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self.scroll_area.setVerticalScrollBarPolicy(policy)
 
     def set_connection_status(self, connected: bool):
         """Da chiamare esternamente (es. da main.py) quando lo stato seriale cambia."""
@@ -123,12 +138,9 @@ class DashboardWindow(QMainWindow):
         if index >= 0:
             widget = self.stack.widget(index)
             widget.updateGeometry() # pyright: ignore[reportOptionalMemberAccess]
-            scroll = self.stack.parent()
-            while scroll and not isinstance(scroll, QScrollArea):
-                scroll = scroll.parent()
-            if scroll:
-                scroll.updateGeometry()
-                scroll.viewport().updateGeometry() # pyright: ignore[reportOptionalMemberAccess]
+            self.stack.updateGeometry()
+            self.scroll_area.updateGeometry()
+            self.scroll_area.viewport().updateGeometry() # pyright: ignore[reportOptionalMemberAccess]
 
     def keyPressEvent(self, event): # pyright: ignore[reportIncompatibleMethodOverride]
         if event.key() == Qt.Key.Key_Escape:
@@ -180,7 +192,9 @@ class DashboardWindow(QMainWindow):
             t_min, t_max, t_avg = float(np.min(temps)), float(np.max(temps)), float(np.mean(temps))
             self.sidebar.temp_stats_plate.update_stats(t_min, t_max, t_avg, t_max - t_min)
 
-        # --- Forward to Active Screen ---
-        active_screen = self.stack.currentWidget()
-        if isinstance(active_screen, TelemetryScreen):
-            active_screen.add_point(frame.timestamp, state)
+        # --- Forward to every screen, not just the visible one, so plots stay
+        # populated with the latest data even while their screen is hidden. ---
+        for i in range(self.stack.count()):
+            widget = self.stack.widget(i)
+            if isinstance(widget, TelemetryScreen):
+                widget.add_point(frame.timestamp, state)
