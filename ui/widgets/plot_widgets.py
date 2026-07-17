@@ -153,24 +153,7 @@ class EnumPlot(TimeSeriesPlotWidget):
         self.selection_panel.update_selection(self.label_formatter(0), actual_x, label, "", color)
 
     def on_mouse_move(self, pos):
-        if not self.plot_widget.sceneBoundingRect().contains(pos):
-            self.cursor_label.hide()
-            return
-        if not hasattr(self, '_last_x_view') or len(self._last_x_view) == 0:
-            return
-
-        vb = self.plot_widget.getViewBox()
-        mouse_point = vb.mapSceneToView(pos)
-        idx = int(np.argmin(np.abs(self._last_x_view - mouse_point.x())))
-        actual_x = self._last_x_view[idx]
-        state = int(self._last_data_2d[idx, 0])
-        label = self.enum_map.get(state, "NONE")
-
-        self.cursor_label.setText(f"T: {actual_x:.2f}s\n{label}")
-        plot_pos = self.plot_widget.mapFromScene(pos)
-        container_pos = self.plot_widget.mapTo(self._plot_container, plot_pos)
-        self.cursor_label.move(int(container_pos.x()) + 15, int(container_pos.y()) - 10)
-        self.cursor_label.show()
+        pass
 
     def clear_selection(self):
         self.v_line.hide()
@@ -411,29 +394,7 @@ class StackedBoolPlot(PlotFrameBase):
             item.setBrush(pg.mkBrush(color + ("80" if i == index else "20")))
 
     def on_mouse_move(self, pos):
-        if not self.plot_widget.sceneBoundingRect().contains(pos):
-            self.v_line.hide()
-            self.cursor_label.hide()
-            return
-        if not hasattr(self, '_last_x_view') or len(self._last_x_view) == 0:
-            return
-
-        vb = self.plot_widget.getViewBox()
-        x = vb.mapSceneToView(pos).x()
-        idx = int(np.argmin(np.abs(self._last_x_view - x)))
-        actual_x = self._last_x_view[idx]
-        self.v_line.setPos(actual_x)
-        self.v_line.show()
-
-        lines = [f"T: {actual_x:.2f}s"]
-        for i, label in enumerate(self.series_labels):
-            val = bool(self._last_data_2d[idx, i])
-            lines.append(f"{label}: {Strings.LBL_TRUE if val else Strings.LBL_FALSE}")
-        self.cursor_label.setText("\n".join(lines))
-        plot_pos = self.plot_widget.mapFromScene(pos)
-        container_pos = self.plot_widget.mapTo(self.plot_widget.parentWidget(), plot_pos)
-        self.cursor_label.move(int(container_pos.x()) + 15, int(container_pos.y()) - 10)
-        self.cursor_label.show()
+        pass
 
     def reset_data(self):
         self.buffer.reset()
@@ -718,21 +679,7 @@ class BarChartWidget(PlotFrameBase):
         self._select_bar(None)
 
     def on_mouse_move(self, pos):
-        if not self.plot_widget.sceneBoundingRect().contains(pos):
-            return
-        vb = self.plot_widget.getViewBox()
-        mouse_point = vb.mapSceneToView(pos)
-        x_data = np.arange(len(self.current_data))
-        if len(x_data) == 0:
-            return
-        closest_idx = int(np.argmin(np.abs(x_data - mouse_point.x())))
-        if 0 <= closest_idx < len(self.current_data):
-            val = self.current_data[closest_idx]
-            mean_val = np.mean(self.current_data)
-            delta = val - mean_val
-            label = self.label_formatter(closest_idx)
-            tooltip = f"{label}: {val:.3f} {self.unit}\nDelta from avg: {delta:+.3f} {self.unit}"
-            self.plot_widget.setToolTip(tooltip)
+        pass
 
     def reset_data(self):
         self.current_data = np.zeros(self.bar_count, dtype=np.float64)
