@@ -355,15 +355,15 @@ class StackedBoolPlot(PlotFrameBase):
         idx = int(np.argmin(np.abs(self._last_x_view - click_x)))
         actual_x = self._last_x_view[idx]
 
-        # A click only selects a band if it lands close to that band's actual step line
-        # (its current True/False level), not anywhere in the band's vertical slot.
+        # A click selects a band either near its current step line (True/False
+        # level) or anywhere inside its filled area (base..top when True).
         threshold = 0.15
         band_idx = None
         for i in range(self.series_count):
             base = i * (self.BAND_HEIGHT + self.PADDING)
-            val = self._last_data_2d[idx, i]
-            line_y = base + (self.BAND_HEIGHT if val else 0.0)
-            if abs(click_y - line_y) <= threshold:
+            val = bool(self._last_data_2d[idx, i])
+            top = base + self.BAND_HEIGHT if val else base
+            if (base - threshold) <= click_y <= (top + threshold):
                 band_idx = i
                 break
 
