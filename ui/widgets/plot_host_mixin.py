@@ -16,7 +16,7 @@ class PlotHostMixin:
         self._stack = stack
         self._max_page = QWidget()
         self._max_layout = QVBoxLayout(self._max_page)
-        self._max_layout.setContentsMargins(0, 0, 0, 0)
+        self._max_layout.setContentsMargins(15, 15, 15, 15)
         self._stack.addWidget(self._max_page)
         self._maximized_widget = None
         self._maximized_origin_grid = None
@@ -37,6 +37,8 @@ class PlotHostMixin:
             self._maximized_origin_grid.remove_item(plot_widget)
         self._max_layout.addWidget(plot_widget)
         self._stack.setCurrentIndex(1)
+        self._stack.updateGeometry()
+        self.updateGeometry() # pyright: ignore[reportAttributeAccessIssue]
         QTimer.singleShot(0, self._constrain_max_page)
 
     def _constrain_max_page(self):
@@ -63,3 +65,5 @@ class PlotHostMixin:
         self._max_page.setMaximumSize(16777215, 16777215)
         self._max_page.setMinimumSize(0, 0)
         self._stack.setCurrentIndex(0)
+        self._stack.updateGeometry()
+        self.updateGeometry() # pyright: ignore[reportAttributeAccessIssue]

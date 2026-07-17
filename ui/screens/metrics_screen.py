@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QVBoxLayout, QSizePolicy, QWidget, QStackedWidget
+    QVBoxLayout, QSizePolicy, QWidget
 )
 
 from ui.widgets.time_series_plot import TimeSeriesPlotWidget
@@ -9,6 +9,7 @@ from ui.widgets.temperatures_plot import TemperaturesPlotWidget
 from ui.widgets.responsive_grid import ResponsiveGrid
 from ui.widgets.plot_host_mixin import PlotHostMixin
 from ui.widgets.heatmap import VoltageHeatmap, TemperatureHeatmap
+from ui.widgets.stacked_widget import CurrentPageStackedWidget
 from ui.screens.telemetry_screen import TelemetryScreen
 from ui.fsm_state import fsm_state_labels
 from ui.strings import Strings
@@ -42,15 +43,15 @@ class MetricsScreen(TelemetryScreen, PlotHostMixin):
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
         outer_layout = QVBoxLayout(self)
-        outer_layout.setContentsMargins(20, 20, 20, 20)
-        outer_layout.setSpacing(10)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
 
-        stack = QStackedWidget()
+        stack = CurrentPageStackedWidget()
         outer_layout.addWidget(stack)
 
         normal_page = QWidget()
         layout = QVBoxLayout(normal_page)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
         # --- Section A: pack voltage / current / SoC ---

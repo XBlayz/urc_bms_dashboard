@@ -1,7 +1,7 @@
 import numpy as np
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QMessageBox, QWidget, QSizePolicy, QStackedWidget
+    QLineEdit, QMessageBox, QWidget, QSizePolicy
 )
 from PyQt6.QtCore import Qt
 
@@ -9,6 +9,7 @@ from ui.widgets.plot_widgets import SimpleTimeSeriesPlot
 from ui.widgets.plates import EnumStatePlate, UnitPlate, TimePlate
 from ui.widgets.responsive_grid import ResponsiveGrid
 from ui.widgets.plot_host_mixin import PlotHostMixin
+from ui.widgets.stacked_widget import CurrentPageStackedWidget
 from ui.screens.telemetry_screen import TelemetryScreen
 from ui.fsm_state import fsm_state_labels
 from ui.strings import Strings
@@ -28,7 +29,7 @@ class ChargingScreen(TelemetryScreen, PlotHostMixin):
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)
 
-        stack = QStackedWidget()
+        stack = CurrentPageStackedWidget()
         outer_layout.addWidget(stack)
 
         normal_page = QWidget()
