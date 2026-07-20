@@ -21,23 +21,31 @@ class BmsState(Enum):
     COUNT = 9
     NONE = 10
 
+#TODO: Da definire
+class CommandResponse(Enum):
+    CHARGING_SETTINGS_APPLIED = "charging_settings_applied"
+    CHARGING_SETTINGS_REJECTED = "charging_settings_rejected"
+
 class BmsTelemetryState:
     def __init__(self, volt_count: int, temp_count: int, volt_mapping: Any, temp_mapping: Any) -> None:
-        self.bms_status: Optional['BmsState'] = None
+        self._volt_mapping = volt_mapping
+        self._temp_mapping = temp_mapping
+
+        # --- Real states ---
+        # - Persistent states -
+        #* Persistente states maintain always the last received value
+        self._bms_status = None
+        self.bms_status = None
 
         self.pack_voltage: float = 0.0
-        self.pack_current: float = 0.0
         self.post_air_voltage: float = 0.0
-        self.soc: float = 0.0
+        self.pack_current: float = 0.0
         self.sop_dischg: float = 0.0
         self.sop_chg: float = 0.0
+        self.soc: float = 0.0
 
         self.cell_voltages = np.zeros(volt_count, dtype=np.float64)
         self.cell_temperatures = np.zeros(temp_count, dtype=np.float64)
-
-        # Hardware mapping instances injected via constructor
-        self._volt_mapping = volt_mapping
-        self._temp_mapping = temp_mapping
 
         self.balancing_masks: bytes = b""
 
@@ -48,14 +56,36 @@ class BmsTelemetryState:
             "sdc": False
         }
 
-        self.charging_set_voltage: float = 0.0
-        self.charging_set_current: float = 0.0
-
         self.ams_error: bool = False
         self.diagnostic_state: int = 0
 
+        # - Transient states -
+        #* Transient states are updated every time a new telemetry frame is received
+        #* If the value is not received, it is set to None
+        self.charging_set_voltage: Optional[float] = None
+        self.charging_set_current: Optional[float] = None
+
+        self.charging_settings_ack: Optional[bool] = None
+
+        # --- Elaborated states ---
+        # - Persistent states -
+        self.is_charging_starting: bool = False
+        self.is_charging_active: bool = False
+        self.is_charging_stopping: bool = False
+
+    @property
+    def bms_status(self) -> Optional['BmsState']:
+        return self._bms_status
+
+    @bms_status.setter
+    def bms_status(self, value: Optional['BmsState']) -> None:
+        self._bms_status = value
+        self._update_elaborated_states()
+
     def update(self, telemetry_msg) -> None:
         """Updates internal state based on the received telemetry payload."""
+        self._reset_transient_states()
+
         payload_type = telemetry_msg.WhichOneof("payload")
 
         if payload_type == "status":
@@ -111,7 +141,31 @@ class BmsTelemetryState:
                 if idx is not None:
                     self.cell_temperatures[idx] = t
 
+        elif payload_type == "command_response":
+            self._decode_command_response(telemetry_msg.command_response.message)
+
         elif payload_type is None:
             logging.debug("[STATE UPDATE] Received BmsTelemetry message with no payload set.")
+            return
         else:
             logging.warning(f"[STATE UPDATE] Received unknown payload type: {payload_type}")
+            return
+
+    def _decode_command_response(self, message: str):
+        match message:
+            case CommandResponse.CHARGING_SETTINGS_APPLIED.value:
+                self.charging_settings_ack = True
+            case CommandResponse.CHARGING_SETTINGS_REJECTED.value:
+                self.charging_settings_ack = False
+
+
+    def _update_elaborated_states(self):
+        self.is_charging_starting = self._bms_status == BmsState.PREPARING_CHARGING
+        self.is_charging_active = self._bms_status == BmsState.CHARGING
+        self.is_charging_stopping = self._bms_status == BmsState.EXITING_CHARGING
+
+    def _reset_transient_states(self):
+        self.charging_set_voltage = None
+        self.charging_set_current = None
+
+        self.charging_settings_ack = None

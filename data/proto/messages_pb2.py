@@ -24,15 +24,15 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emessages.proto\"(\n\tBmsStatus\x12\x1b\n\x05state\x18\x02 \x01(\x0e\x32\x0c.SystemState\"y\n\tPackState\x12\x0f\n\x07voltage\x18\x01 \x01(\x02\x12\x0f\n\x07\x63urrent\x18\x02 \x01(\x02\x12\x18\n\x10post_air_voltage\x18\x03 \x01(\x02\x12\x0b\n\x03soc\x18\x04 \x01(\x02\x12\x12\n\nsop_dischg\x18\x05 \x01(\x02\x12\x0f\n\x07sop_chg\x18\x06 \x01(\x02\"4\n\x0c\x43\x65llVoltages\x12\x12\n\ndevice_idx\x18\x01 \x01(\r\x12\x10\n\x08voltages\x18\x02 \x03(\x02\"<\n\x10\x43\x65llTemperatures\x12\x12\n\ndevice_idx\x18\x01 \x01(\r\x12\x14\n\x0ctemperatures\x18\x02 \x03(\x02\")\n\x0e\x42\x61lancingState\x12\x17\n\x0f\x62\x61lancing_masks\x18\x01 \x01(\x0c\"R\n\rActuatorState\x12\x0f\n\x07\x61ir_pos\x18\x01 \x01(\x08\x12\x0f\n\x07\x61ir_neg\x18\x02 \x01(\x08\x12\x12\n\npre_charge\x18\x03 \x01(\x08\x12\x0b\n\x03sdc\x18\x04 \x01(\x08\"<\n\x10\x43hargingSettings\x12\x13\n\x0bset_voltage\x18\x01 \x01(\x02\x12\x13\n\x0bset_current\x18\x02 \x01(\x02\":\n\x0b\x44iagnostics\x12\x11\n\tams_error\x18\x01 \x01(\x08\x12\x18\n\x10\x64iagnostic_state\x18\x02 \x01(\r\"\xc9\x02\n\x0c\x42msTelemetry\x12\x1c\n\x06status\x18\x01 \x01(\x0b\x32\n.BmsStatusH\x00\x12 \n\npack_state\x18\x02 \x01(\x0b\x32\n.PackStateH\x00\x12&\n\rcell_voltages\x18\x03 \x01(\x0b\x32\r.CellVoltagesH\x00\x12.\n\x11\x63\x65ll_temperatures\x18\x04 \x01(\x0b\x32\x11.CellTemperaturesH\x00\x12$\n\tbalancing\x18\x05 \x01(\x0b\x32\x0f.BalancingStateH\x00\x12$\n\ncontactors\x18\x06 \x01(\x0b\x32\x0e.ActuatorStateH\x00\x12%\n\x08\x63harging\x18\x07 \x01(\x0b\x32\x11.ChargingSettingsH\x00\x12#\n\x0b\x64iagnostics\x18\x08 \x01(\x0b\x32\x0c.DiagnosticsH\x00\x42\t\n\x07payload*\xc3\x02\n\x0bSystemState\x12\x18\n\x14SYSTEM_STATE_STANDBY\x10\x00\x12\x18\n\x14SYSTEM_STATE_DRIVING\x10\x01\x12\x19\n\x15SYSTEM_STATE_CHARGING\x10\x02\x12\x16\n\x12SYSTEM_STATE_ERROR\x10\x03\x12\x1c\n\x18SYSTEM_STATE_PRECHARGING\x10\x04\x12#\n\x1fSYSTEM_STATE_PREPARING_CHARGING\x10\x05\x12\x1d\n\x19SYSTEM_STATE_INITIALIZING\x10\x06\x12!\n\x1dSYSTEM_STATE_EXITING_CHARGING\x10\x07\x12\x19\n\x15SYSTEM_STATE_OVERRIDE\x10\x08\x12\x16\n\x12SYSTEM_STATE_COUNT\x10\t\x12\x15\n\x11SYSTEM_STATE_NONE\x10\nb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emessages.proto\"(\n\tBmsStatus\x12\x1b\n\x05state\x18\x02 \x01(\x0e\x32\x0c.SystemState\"y\n\tPackState\x12\x0f\n\x07voltage\x18\x01 \x01(\x02\x12\x0f\n\x07\x63urrent\x18\x02 \x01(\x02\x12\x18\n\x10post_air_voltage\x18\x03 \x01(\x02\x12\x0b\n\x03soc\x18\x04 \x01(\x02\x12\x12\n\nsop_dischg\x18\x05 \x01(\x02\x12\x0f\n\x07sop_chg\x18\x06 \x01(\x02\"4\n\x0c\x43\x65llVoltages\x12\x12\n\ndevice_idx\x18\x01 \x01(\r\x12\x10\n\x08voltages\x18\x02 \x03(\x02\"<\n\x10\x43\x65llTemperatures\x12\x12\n\ndevice_idx\x18\x01 \x01(\r\x12\x14\n\x0ctemperatures\x18\x02 \x03(\x02\")\n\x0e\x42\x61lancingState\x12\x17\n\x0f\x62\x61lancing_masks\x18\x01 \x01(\x0c\"R\n\rActuatorState\x12\x0f\n\x07\x61ir_pos\x18\x01 \x01(\x08\x12\x0f\n\x07\x61ir_neg\x18\x02 \x01(\x08\x12\x12\n\npre_charge\x18\x03 \x01(\x08\x12\x0b\n\x03sdc\x18\x04 \x01(\x08\"<\n\x10\x43hargingSettings\x12\x13\n\x0bset_voltage\x18\x01 \x01(\x02\x12\x13\n\x0bset_current\x18\x02 \x01(\x02\":\n\x0b\x44iagnostics\x12\x11\n\tams_error\x18\x01 \x01(\x08\x12\x18\n\x10\x64iagnostic_state\x18\x02 \x01(\r\"\x16\n\x14\x43hargingStartCommand\"\x15\n\x13\x43hargingStopCommand\"\x15\n\x13InitialStateRequest\"\"\n\x0f\x43ommandResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x8e\x04\n\x0c\x42msTelemetry\x12\x1c\n\x06status\x18\x01 \x01(\x0b\x32\n.BmsStatusH\x00\x12 \n\npack_state\x18\x02 \x01(\x0b\x32\n.PackStateH\x00\x12&\n\rcell_voltages\x18\x03 \x01(\x0b\x32\r.CellVoltagesH\x00\x12.\n\x11\x63\x65ll_temperatures\x18\x04 \x01(\x0b\x32\x11.CellTemperaturesH\x00\x12$\n\tbalancing\x18\x05 \x01(\x0b\x32\x0f.BalancingStateH\x00\x12$\n\ncontactors\x18\x06 \x01(\x0b\x32\x0e.ActuatorStateH\x00\x12%\n\x08\x63harging\x18\x07 \x01(\x0b\x32\x11.ChargingSettingsH\x00\x12#\n\x0b\x64iagnostics\x18\x08 \x01(\x0b\x32\x0c.DiagnosticsH\x00\x12/\n\x0e\x63harging_start\x18\t \x01(\x0b\x32\x15.ChargingStartCommandH\x00\x12-\n\rcharging_stop\x18\n \x01(\x0b\x32\x14.ChargingStopCommandH\x00\x12\x35\n\x15initial_state_request\x18\x0b \x01(\x0b\x32\x14.InitialStateRequestH\x00\x12,\n\x10\x63ommand_response\x18\x0c \x01(\x0b\x32\x10.CommandResponseH\x00\x42\t\n\x07payload*\xc3\x02\n\x0bSystemState\x12\x18\n\x14SYSTEM_STATE_STANDBY\x10\x00\x12\x18\n\x14SYSTEM_STATE_DRIVING\x10\x01\x12\x19\n\x15SYSTEM_STATE_CHARGING\x10\x02\x12\x16\n\x12SYSTEM_STATE_ERROR\x10\x03\x12\x1c\n\x18SYSTEM_STATE_PRECHARGING\x10\x04\x12#\n\x1fSYSTEM_STATE_PREPARING_CHARGING\x10\x05\x12\x1d\n\x19SYSTEM_STATE_INITIALIZING\x10\x06\x12!\n\x1dSYSTEM_STATE_EXITING_CHARGING\x10\x07\x12\x19\n\x15SYSTEM_STATE_OVERRIDE\x10\x08\x12\x16\n\x12SYSTEM_STATE_COUNT\x10\t\x12\x15\n\x11SYSTEM_STATE_NONE\x10\nb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'messages_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_SYSTEMSTATE']._serialized_start=881
-  _globals['_SYSTEMSTATE']._serialized_end=1204
+  _globals['_SYSTEMSTATE']._serialized_start=1184
+  _globals['_SYSTEMSTATE']._serialized_end=1507
   _globals['_BMSSTATUS']._serialized_start=18
   _globals['_BMSSTATUS']._serialized_end=58
   _globals['_PACKSTATE']._serialized_start=60
@@ -49,6 +49,14 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_CHARGINGSETTINGS']._serialized_end=486
   _globals['_DIAGNOSTICS']._serialized_start=488
   _globals['_DIAGNOSTICS']._serialized_end=546
-  _globals['_BMSTELEMETRY']._serialized_start=549
-  _globals['_BMSTELEMETRY']._serialized_end=878
+  _globals['_CHARGINGSTARTCOMMAND']._serialized_start=548
+  _globals['_CHARGINGSTARTCOMMAND']._serialized_end=570
+  _globals['_CHARGINGSTOPCOMMAND']._serialized_start=572
+  _globals['_CHARGINGSTOPCOMMAND']._serialized_end=593
+  _globals['_INITIALSTATEREQUEST']._serialized_start=595
+  _globals['_INITIALSTATEREQUEST']._serialized_end=616
+  _globals['_COMMANDRESPONSE']._serialized_start=618
+  _globals['_COMMANDRESPONSE']._serialized_end=652
+  _globals['_BMSTELEMETRY']._serialized_start=655
+  _globals['_BMSTELEMETRY']._serialized_end=1181
 # @@protoc_insertion_point(module_scope)

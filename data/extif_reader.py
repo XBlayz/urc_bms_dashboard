@@ -60,17 +60,20 @@ class ExtifUartReader(QObject):
         self._running = False
         self._thread = None
         self._serial = None
+        self._write_lock = threading.Lock() # Ensures thread-safe writes
 
-    def start(self):
+    def start(self) -> bool:
         if self._running:
-            return
+            return True
         try:
             self._serial = serial.Serial(self.port, self.baudrate, timeout=0.1)
             self._running = True
             self._thread = threading.Thread(target=self._read_loop, daemon=True)
             self._thread.start()
+            return True
         except Exception as e:
             logging.error(f"[SERIAL] Error opening serial port {self.port}: {e}")
+            return False
 
     def stop(self):
         self._running = False
@@ -79,6 +82,19 @@ class ExtifUartReader(QObject):
         if self._serial and self._serial.is_open:
             self._serial.close()
             self._serial = None
+
+    def write_data(self, data: bytes) -> bool:
+        if not self._running or not self._serial or not self._serial.is_open:
+            logging.warning("[SERIAL] Attempted to write but port is not open.")
+            return False
+
+        with self._write_lock:
+            try:
+                self._serial.write(data)
+                return True
+            except Exception as e:
+                logging.error(f"[SERIAL] Write error: {e}")
+                return False
 
     def _handle_rx_frame(self, frame_data):
         try:
@@ -113,7 +129,7 @@ class ExtifUartReader(QObject):
                                 buffer.clear()
                         else:
                             buffer.append(byte)
-                            if len(buffer) > 4096:  # Prevent unbound growth
+                            if len(buffer) > 4096: # Prevent unbound growth
                                 buffer.clear()
                 else:
                     time.sleep(0.01)

@@ -26,7 +26,25 @@ class DualVoltagesPlot(TimeSeriesPlotWidget):
             label_formatter_callback=lambda i: ["Pre AIR", "Post AIR"][i],
             empty_text="No voltage data",
             colors=[Theme.SIGNAL_COLORS["pack_voltage_pre_air"], Theme.SIGNAL_COLORS["pack_voltage_post_air"]],
-            stats_mode="window"
+            stats_mode="window",
+            show_stats_label=False
+        )
+        self.setMinimumHeight(Theme.H_SIZE_S)
+        self.setMinimumWidth(Theme.W_SIZE_S)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+class CurrentWithSopPlot(TimeSeriesPlotWidget):
+    def __init__(self, parent=None):
+        super().__init__(
+            title=Strings.TITLE_PACK_CURRENT,
+            unit="A",
+            series_count=3,
+            label_formatter_callback=lambda i: ["Current", "SOP (dis.)", "SOP (chg.)"][i],
+            empty_text="No current data",
+            colors=[Theme.SIGNAL_COLORS["pack_current"], Theme.SIGNAL_COLORS["sop_dischg"], Theme.SIGNAL_COLORS["sop_chg"]],
+            dashed=[False, True, True],
+            stats_mode="window",
+            show_stats_label=False
         )
         self.setMinimumHeight(Theme.H_SIZE_S)
         self.setMinimumWidth(Theme.W_SIZE_S)
@@ -63,10 +81,8 @@ class MetricsScreen(TelemetryScreen, PlotHostMixin):
         layout.addWidget(voltage_row)
 
         current_soc_row = ResponsiveGrid(min_item_width=Theme.W_SIZE_S + 20)
-        self.pack_current_plot = self._build_simple_plot(
-            Strings.TITLE_PACK_CURRENT, "A", Strings.LBL_PACK_CURRENT, "No current data",
-            Theme.SIGNAL_COLORS["pack_current"]
-        )
+        self.pack_current_plot = CurrentWithSopPlot()
+        self.pack_current_plot.sig_maximize_toggled.connect(self._on_plot_maximize)
         current_soc_row.add_item(self.pack_current_plot)
 
         self.soc_plot = self._build_simple_plot(
@@ -180,7 +196,7 @@ class MetricsScreen(TelemetryScreen, PlotHostMixin):
     def add_point(self, current_time, state):
         self.soc_plot.add_point(current_time, [state.soc])
         self.pack_voltage_plot.add_point(current_time, [state.pack_voltage, state.post_air_voltage])
-        self.pack_current_plot.add_point(current_time, [state.pack_current])
+        self.pack_current_plot.add_point(current_time, [state.pack_current, state.sop_dischg, -state.sop_chg])
 
         if state.bms_status is not None:
             self.fsm_plot.add_point(current_time, [state.bms_status.value])

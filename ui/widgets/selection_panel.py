@@ -24,6 +24,12 @@ class SelectionPanel(QFrame):
         self.cell_lbl.setStyleSheet(Theme.cell_label_empty())
         layout.addWidget(self.cell_lbl)
 
+        # Window stats (MIN/MAX/AVG/STD) for the selected signal only.
+        # Populated by callers that pass stats_text; empty otherwise.
+        self.stats_lbl = QLabel("")
+        self.stats_lbl.setStyleSheet(Theme.stats_label())
+        layout.addWidget(self.stats_lbl)
+
         layout.addStretch()
 
         self.time_lbl = QLabel(Strings.EMPTY_TIME)
@@ -34,17 +40,19 @@ class SelectionPanel(QFrame):
         self.value_lbl.setStyleSheet(Theme.value_label())
         layout.addWidget(self.value_lbl)
 
-    def update_selection(self, label_text, time_val, value, unit, color_hex):
+    def update_selection(self, label_text, time_val, value, unit, color_hex, stats_text=None):
         if not label_text:
             self.color_indicator.setStyleSheet(Theme.color_indicator())
             self.cell_lbl.setText(self.empty_text)
             self.cell_lbl.setStyleSheet(Theme.cell_label_empty())
+            self.stats_lbl.setText("")
             self.time_lbl.setText(Strings.EMPTY_TIME)
             self.value_lbl.setText(Strings.EMPTY_VALUE)
         else:
             self.color_indicator.setStyleSheet(Theme.color_indicator(color_hex))
             self.cell_lbl.setText(label_text)
             self.cell_lbl.setStyleSheet(Theme.cell_label_active())
+            self.stats_lbl.setText(stats_text or "")
             self.time_lbl.setText(Strings.FMT_TIME.format(time=time_val))
             if isinstance(value, str):
                 self.value_lbl.setText(value)

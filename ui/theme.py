@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 class Theme:
     H_SIZE_S = 500
     W_SIZE_S = 1100
@@ -105,6 +108,24 @@ class Theme:
             }
             QPushButton:checked:hover {
                 background-color: #CD2626;
+            }
+        """
+
+    @classmethod
+    def simple_button(cls):
+        return """
+            QPushButton {
+                background-color: #777777;
+                color: #2A2A2A;
+                border-radius: 11px;
+                padding: 0 12px;
+                font-weight: bold;
+                font-size: 10px;
+                letter-spacing: 1px;
+                border: 1px solid #333333;
+            }
+            QPushButton:hover {
+                border: 1px solid #555555;
             }
         """
 
@@ -255,21 +276,52 @@ class Theme:
         """
 
     @classmethod
-    def line_edit(cls):
-        return """
-            QLineEdit {
-                background-color: #1A1A1A;
-                color: #FFFFFF;
-                border: 1px solid #444444;
-                border-radius: 6px;
-                padding: 8px;
-                font-family: monospace;
-                font-size: 14px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #A3202B;
-            }
-        """
+    def line_edit(cls, applied: Optional[bool]=None):
+        if applied is None:
+            return """
+                QLineEdit {
+                    background-color: #1A1A1A;
+                    color: #FFFFFF;
+                    border: 2px dashed #444444;
+                    border-radius: 6px;
+                    padding: 8px;
+                    font-family: monospace;
+                    font-size: 14px;
+                }
+                QLineEdit:focus {
+                    border: 1px solid #A3202B;
+                }
+            """
+        elif applied:
+            return """
+                QLineEdit {
+                    background-color: #1A1A1A;
+                    color: #FFFFFF;
+                    border: 1px solid #444444;
+                    border-radius: 6px;
+                    padding: 8px;
+                    font-family: monospace;
+                    font-size: 14px;
+                }
+                QLineEdit:focus {
+                    border: 1px solid #A3202B;
+                }
+            """
+        else:
+            return """
+                QLineEdit {
+                    background-color: #1A1A1A;
+                    color: #FFFFFF;
+                    border: 1px solid #B7761A;
+                    border-radius: 6px;
+                    padding: 8px;
+                    font-family: monospace;
+                    font-size: 14px;
+                }
+                QLineEdit:focus {
+                    border: 1px solid #A3202B;
+                }
+            """
 
     @classmethod
     def button_primary(cls):
@@ -309,6 +361,52 @@ class Theme:
         """
 
     @classmethod
+    def charging_button(cls, is_active, color_string):
+        #TODO: Fix colors
+        if color_string == "gray":
+            color = "#777777"
+            color_darker = "#555555"
+        elif color_string == "yellow":
+            color = "#BB8800"
+            color_darker = "#997700"
+        elif color_string == "green":
+            color = "#00AA00"
+            color_darker = "#008800"
+        elif color_string == "red":
+            color = "#BB0000"
+            color_darker = "#990000"
+        elif color_string == "blue":
+            color = "#004499"
+            color_darker = "#002277"
+        else:
+            raise ValueError(f"Invalid `color_string` for charging button: {color_string}")
+
+        if is_active:
+            mouse_change = f"""
+                QPushButton:hover {{
+                    background-color: {color_darker};
+                }}
+                QPushButton:pressed {{
+                    background-color: {color};
+                }}
+            """
+        else:
+            mouse_change = ""
+
+        return f"""
+            QPushButton {{
+                background-color: {color};
+                color: #FFFFFF;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 10px 20px;
+                border-radius: 8px;
+                border: none;
+            }}
+            {mouse_change}
+        """
+
+    @classmethod
     def feedback_label(cls, is_success=True):
         color = "#00FF00" if is_success else "#FF4444"
         return f"color: {color}; font-size: 12px; font-weight: bold;"
@@ -334,14 +432,16 @@ class Theme:
     }
 
     SIGNAL_COLORS = {
-        "pack_voltage_pre_air": "#00AAFF",
-        "pack_voltage_post_air": "#FFAA00",
-        "pack_current": "#00FF00",
+        "pack_voltage_pre_air": "#00FF00",
+        "pack_voltage_post_air": "#008000",
+        "pack_current": "#FFAA00",
+        "sop_dischg": "#FF4444",
+        "sop_chg": "#00AAFF",
         "soc": "#AA00FF",
-        "actuator_air_pos": "#00FF00",
-        "actuator_air_neg": "#FF4444",
+        "actuator_air_pos": "#FF4444",
+        "actuator_air_neg": "#00AAFF",
         "actuator_pre_charge": "#FFAA00",
-        "actuator_sdc": "#00AAFF",
+        "actuator_sdc": "#00FF00",
     }
 
 

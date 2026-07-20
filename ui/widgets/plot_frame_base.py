@@ -71,7 +71,7 @@ class PlotFrameBase(QFrame):
         self.reset_btn = QPushButton(Strings.BTN_RESET)
         self.reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.reset_btn.setFixedHeight(22)
-        self.reset_btn.setStyleSheet(Theme.toggle_button())
+        self.reset_btn.setStyleSheet(Theme.simple_button())
         self.reset_btn.clicked.connect(self.reset_data)
         header_layout.addWidget(self.reset_btn)
 
@@ -96,7 +96,7 @@ class PlotFrameBase(QFrame):
         btn = QPushButton(text)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setFixedHeight(22)
-        btn.setStyleSheet(Theme.toggle_button())
+        btn.setStyleSheet(Theme.simple_button())
         btn.clicked.connect(slot)
         return btn
 

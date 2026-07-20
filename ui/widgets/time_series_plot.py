@@ -21,15 +21,18 @@ class TimeSeriesPlotWidget(PlotFrameBase):
 
     def __init__(self, title, unit, series_count, label_formatter_callback,
                  empty_text=Strings.EMPTY_CELL, colors=None,
-                 y_zoom_enabled=True, fit_mode="xy", stats_mode="instantaneous"):
+                 y_zoom_enabled=True, fit_mode="xy", stats_mode="instantaneous",
+                 show_stats_label=True, dashed=None):
         self.unit = unit
         self.series_count = series_count
         self.label_formatter = label_formatter_callback
         self.empty_text = empty_text
         self._signal_colors = colors
+        self._dashed = dashed or []
         self._y_zoom_enabled = y_zoom_enabled
         self._fit_mode = fit_mode
         self.stats_mode = stats_mode
+        self._show_stats_label = show_stats_label
 
         self.curves = []
         self.colors = []
@@ -38,6 +41,8 @@ class TimeSeriesPlotWidget(PlotFrameBase):
         self.selected_series_idx = None
 
         super().__init__(title, show_table_toggle=True, show_pause=True)
+        if not self._show_stats_label:
+            self.stats_lbl.hide()
         self._build_pages()
 
     # --- header ---
@@ -86,7 +91,8 @@ class TimeSeriesPlotWidget(PlotFrameBase):
             else:
                 color = np.random.randint(50, 255, 3).tolist()
             self.colors.append(color)
-            pen = pg.mkPen(color=color, width=1)
+            style = Qt.PenStyle.DashLine if (i < len(self._dashed) and self._dashed[i]) else Qt.PenStyle.SolidLine
+            pen = pg.mkPen(color=color, width=1, style=style)
             curve = self.plot_widget.plot(pen=pen, autoDownsample=True, clipToView=True)
             self.curves.append(curve)
 
@@ -183,9 +189,12 @@ class TimeSeriesPlotWidget(PlotFrameBase):
         if not np.any(mask):
             return
         y_vals = self._last_data_2d[:len(self._last_x_view), mask]
-        if y_vals.size == 0:
+
+        # Check if we have data and if it's not all NaNs
+        if y_vals.size == 0 or np.all(np.isnan(y_vals)):
             return
-        y_min, y_max = float(np.min(y_vals)), float(np.max(y_vals))
+
+        y_min, y_max = float(np.nanmin(y_vals)), float(np.nanmax(y_vals))
         padding = (y_max - y_min) * 0.1 or 0.1
         self.plot_widget.setYRange(y_min - padding, y_max + padding)
 
@@ -248,15 +257,34 @@ class TimeSeriesPlotWidget(PlotFrameBase):
                 visible_data = data_2d[mask, :]
                 visible_mask = np.array(self._series_visible, dtype=bool)
                 y_vals = visible_data[:, visible_mask]
-                if y_vals.size > 0:
-                    y_min = np.min(y_vals)
-                    y_max = np.max(y_vals)
+
+                # Check if we have data and if it's not all NaNs
+                if y_vals.size > 0 and not np.all(np.isnan(y_vals)):
+                    y_min = np.nanmin(y_vals)
+                    y_max = np.nanmax(y_vals)
+
                     padding = (y_max - y_min) * 0.1
                     if padding == 0:
                         padding = 0.1
+
                     self.plot_widget.setYRange(y_min - padding, y_max + padding)
 
-        self._update_stats(x_view, data_2d)
+    def _window_stats_text(self, index):
+        """MIN/MAX/AVG/STD over the full visible window for a single series.
+        Only meaningful for stats_mode='window'; feeds the selection panel,
+        shown only while that series is selected."""
+        if self.stats_mode != "window" or index is None:
+            return None
+        if not hasattr(self, '_last_x_view') or len(self._last_x_view) == 0:
+            return None
+        col = self._last_data_2d[:len(self._last_x_view), index]
+        col = col[~np.isnan(col)]
+        if col.size == 0:
+            return None
+        return Strings.FMT_STATS_SELECTED.format(
+            min=float(np.min(col)), max=float(np.max(col)),
+            avg=float(np.mean(col)), std=float(np.std(col)), unit=self.unit
+        )
 
     def _update_stats(self, x_view, data_2d):
         """Instantaneous multi-signal stats (min/max/avg/std/delta over the latest
@@ -284,34 +312,22 @@ class TimeSeriesPlotWidget(PlotFrameBase):
             self.stats_lbl.setText("   |   ".join(parts) if parts else Strings.STATS_EMPTY)
             return
 
-        current_data = data_2d[len(x_view) - 1, :][visible_mask]
-        current_data = current_data[~np.isnan(current_data)]
-        if current_data.size == 0:
-            self.stats_lbl.setText(Strings.STATS_EMPTY)
-            return
-
-        d_min = float(np.min(current_data))
-        d_max = float(np.max(current_data))
-        self.stats_lbl.setText(Strings.FMT_STATS_INSTANT.format(
-            min=d_min, max=d_max,
-            avg=float(np.mean(current_data)), std=float(np.std(current_data)),
-            delta=d_max - d_min, unit=self.unit
-        ))
-
     # --- selection / cursor ---
 
     def _reset_curve_highlight(self):
         for i, curve in enumerate(self.curves):
-            curve.setPen(pg.mkPen(color=self.colors[i], width=1))
+            style = Qt.PenStyle.DashLine if (i < len(self._dashed) and self._dashed[i]) else Qt.PenStyle.SolidLine
+            curve.setPen(pg.mkPen(color=self.colors[i], width=1, style=style))
             curve.setZValue(0)
 
     def _apply_curve_highlight(self, index):
         for i, curve in enumerate(self.curves):
+            style = Qt.PenStyle.DashLine if (i < len(self._dashed) and self._dashed[i]) else Qt.PenStyle.SolidLine
             if i == index:
-                curve.setPen(pg.mkPen(color=self.colors[i], width=2))
+                curve.setPen(pg.mkPen(color=self.colors[i], width=2, style=style))
                 curve.setZValue(10)
             else:
-                curve.setPen(pg.mkPen(color='#444444', width=1))
+                curve.setPen(pg.mkPen(color='#444444', width=1, style=style))
                 curve.setZValue(0)
 
     def set_external_highlight(self, index):
@@ -332,9 +348,10 @@ class TimeSeriesPlotWidget(PlotFrameBase):
             r, g, b = (int(c) for c in self.colors[index][:3])
             color_hex = f'#{r:02x}{g:02x}{b:02x}'
             label_text = self.label_formatter(index)
+            stats_text = self._window_stats_text(index)
             self.selection_panel.update_selection(
                 label_text, self._last_x_view[last_idx],
-                self._last_data_2d[last_idx, index], self.unit, color_hex
+                self._last_data_2d[last_idx, index], self.unit, color_hex, stats_text
             )
 
     def clear_selection(self):
@@ -396,7 +413,8 @@ class TimeSeriesPlotWidget(PlotFrameBase):
             self.hover_point.show()
             color_hex = self.colors[closest_series_idx]
             label_text = self.label_formatter(closest_series_idx)
-            self.selection_panel.update_selection(label_text, actual_x, actual_y, self.unit, color_hex)
+            stats_text = self._window_stats_text(closest_series_idx)
+            self.selection_panel.update_selection(label_text, actual_x, actual_y, self.unit, color_hex, stats_text)
             self._apply_curve_highlight(closest_series_idx)
             self.sig_signal_selected.emit(closest_series_idx)
 
@@ -435,7 +453,8 @@ class TimeSeriesPlotWidget(PlotFrameBase):
 
         color_hex = self.colors[self.selected_series_idx]
         label_text = self.label_formatter(self.selected_series_idx)
-        self.selection_panel.update_selection(label_text, actual_x, actual_y, self.unit, color_hex)
+        stats_text = self._window_stats_text(self.selected_series_idx)
+        self.selection_panel.update_selection(label_text, actual_x, actual_y, self.unit, color_hex, stats_text)
 
         # Anchor the floating cursor plate to the intersection point between the
         # selected curve and the cursor, not to the raw mouse position.

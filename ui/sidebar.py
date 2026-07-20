@@ -18,8 +18,8 @@ from ui.widgets.plates import (
 ACTUATOR_CONFIG = [
     (Strings.STATE_SDC, "sdc", "#FF4444", "#00FF00"),
     (Strings.STATE_PRECHARGE, "pre_charge", "#FFDD00", "#888888"),
-    (Strings.STATE_AIR_PLUS, "air_pos", "#FF4444", "#888888"),
-    (Strings.STATE_AIR_MINUS, "air_neg", "#FF4444", "#888888"),
+    (Strings.STATE_AIR_PLUS, "air_pos", "#FF4444", "#00FF00"),
+    (Strings.STATE_AIR_MINUS, "air_neg", "#FF4444", "#00FF00"),
 ]
 
 

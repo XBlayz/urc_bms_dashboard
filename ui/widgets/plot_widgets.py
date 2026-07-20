@@ -28,7 +28,8 @@ class SimpleTimeSeriesPlot(TimeSeriesPlotWidget):
             label_formatter_callback=label_formatter_callback,
             empty_text=empty_text,
             colors=colors,
-            stats_mode="window"
+            stats_mode="window",
+            show_stats_label=False
         )
 
 
@@ -67,31 +68,51 @@ class EnumPlot(TimeSeriesPlotWidget, MultiCursorMixin):
         if self.is_paused and not force:
             return
 
-        values = data_2d[:len(x_view), 0].astype(int)
-        if len(values) == 0:
+        # Extract the values and identify valid (non-NaN) data points
+        raw_values = data_2d[:len(x_view), 0]
+        valid_mask = ~np.isnan(raw_values)
+
+        # If there are no valid data points, clear the plot and return
+        if not np.any(valid_mask):
+            if hasattr(self, '_segments'):
+                for item in self._segments:
+                    self.plot_widget.removeItem(item)
+            self._segments = []
+            self.stats_lbl.setText("STATE: --")
             return
 
-        unique_states = sorted(set(values))
-        state_to_y = {s: i for i, s in enumerate(unique_states)}
-
+        # We will iterate through the data, breaking segments when we encounter NaNs or state changes.
         change_points = [0]
-        for i in range(1, len(values)):
-            if values[i] != values[i - 1]:
+        for i in range(1, len(raw_values)):
+            # A change point occurs if the state changes, or if we transition to/from a NaN gap
+            if np.isnan(raw_values[i]) != np.isnan(raw_values[i-1]):
+                 change_points.append(i)
+            elif not np.isnan(raw_values[i]) and raw_values[i] != raw_values[i - 1]:
                 change_points.append(i)
-        change_points.append(len(values))
+        change_points.append(len(raw_values))
+
+        # Determine the unique valid states for the Y-axis ticks
+        valid_values = raw_values[valid_mask].astype(int)
+        unique_states = sorted(set(valid_values))
+        state_to_y = {s: i for i, s in enumerate(unique_states)}
 
         if hasattr(self, '_segments'):
             for item in self._segments:
                 self.plot_widget.removeItem(item)
         self._segments = []
 
+        # Draw the segments
         for i in range(len(change_points) - 1):
             start = change_points[i]
             end = change_points[i + 1]
             if end <= start:
                 continue
 
-            state = values[start]
+            # If this segment starts with a NaN, it's a gap; skip drawing
+            if np.isnan(raw_values[start]):
+                continue
+
+            state = int(raw_values[start])
             state_name = self.enum_map.get(state, "NONE")
             color = Theme.STATE_COLORS.get(state_name, "#888888")
             y_val = state_to_y.get(state, 0)
@@ -105,7 +126,7 @@ class EnumPlot(TimeSeriesPlotWidget, MultiCursorMixin):
                 x_step[-1] = seg_x[-1] + 1.0
             y_step = np.full(len(seg_x), y_val)
 
-            curve = self.plot_widget.plot(x_step, y_step, stepMode=True, pen=pg.mkPen(color, width=2))
+            curve = self.plot_widget.plot(x_step, y_step, stepMode="center", pen=pg.mkPen(color, width=2))
             self._segments.append(curve)
 
         y_ticks = [(i, self.enum_map.get(s, str(s))) for s, i in state_to_y.items()]
@@ -119,9 +140,13 @@ class EnumPlot(TimeSeriesPlotWidget, MultiCursorMixin):
             y_padding = 0.5
             self.plot_widget.setYRange(-y_padding, len(unique_states) - 1 + y_padding)
 
-        current_state = int(values[-1])
-        state_name = self.enum_map.get(current_state, "--")
-        self.stats_lbl.setText(f"STATE: {state_name}")
+        # Update the stats label with the last valid state, or "--" if the last value is NaN
+        if np.isnan(raw_values[-1]):
+             self.stats_lbl.setText("STATE: --")
+        else:
+            current_state = int(raw_values[-1])
+            state_name = self.enum_map.get(current_state, "--")
+            self.stats_lbl.setText(f"STATE: {state_name}")
 
         # Keep the cursor(s) aligned to the mouse even if it hasn't moved
         # (e.g. autoscroll just shifted which sample sits under the pointer).
@@ -259,7 +284,7 @@ class StackedBoolPlot(PlotFrameBase, MultiCursorMixin):
             self.fill_items.append(path_item)
 
             pen = pg.mkPen(color=color, width=2)
-            curve = self.plot_widget.plot(pen=pen, stepMode=True)
+            curve = self.plot_widget.plot(pen=pen, stepMode="center")
             self.curves.append(curve)
 
         y_ticks = [
@@ -353,7 +378,7 @@ class StackedBoolPlot(PlotFrameBase, MultiCursorMixin):
             x_step = np.empty(len(x_view) + 1, dtype=x_view.dtype)
             x_step[:-1] = x_view
             x_step[-1] = x_view[-1] + 1.0
-            self.curves[i].setData(x_step, upper, stepMode=True)
+            self.curves[i].setData(x_step, upper, stepMode="center")
 
             path = QPainterPath()
             n = len(x_view)
@@ -379,8 +404,13 @@ class StackedBoolPlot(PlotFrameBase, MultiCursorMixin):
         max_y = self.series_count * self.BAND_HEIGHT + (self.series_count - 1) * self.PADDING
         self.plot_widget.setYRange(-0.2, max_y + 0.2)
 
-        active_count = np.sum(data_2d[len(x_view) - 1, :])
-        self.stats_lbl.setText(f"ACTIVE: {int(active_count)}/{self.series_count}")
+        # Handle NaN values injected during disconnections
+        last_row = data_2d[len(x_view) - 1, :]
+        if np.any(np.isnan(last_row)):
+            self.stats_lbl.setText(f"ACTIVE: --/{self.series_count}")
+        else:
+            active_count = np.sum(last_row)
+            self.stats_lbl.setText(f"ACTIVE: {int(active_count)}/{self.series_count}")
 
         # Keep the cursor(s) aligned to the mouse even if it hasn't moved
         # (e.g. autoscroll just shifted which sample sits under the pointer).
@@ -702,7 +732,9 @@ class BarChartWidget(PlotFrameBase):
         )
         self.plot_widget.addItem(self.delta_bar_item)
 
-        self.stats_lbl.setText(Strings.FMT_STATS.format(std=std_val, max=d_max, min=d_min, unit=self.unit))
+        self.stats_lbl.setText(Strings.FMT_STATS.format(
+            min=d_min, max=d_max, avg=mean_val, std=std_val, delta=d_max - d_min, unit=self.unit
+        ))
 
         ticks = []
         step = max(1, n // 10)

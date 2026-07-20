@@ -10,12 +10,14 @@ from data.hardware.hardware_mapping import get_voltage_cell_mapping, get_tempera
 
 class SerialDataGenerator(QObject):
     telemetry_frame_updated = pyqtSignal(TelemetryFrame)
+    connection_changed = pyqtSignal(bool)
 
-    def __init__(self, port="/dev/ttyUSB0", baudrate=115200, volt_count=138, temp_count=175):
+    def __init__(self, extif_reader: ExtifUartReader, volt_count=138, temp_count=175):
         super().__init__()
         self.start_time = time.time()
+        self._is_connected = False
 
-        self.reader = ExtifUartReader(port, baudrate)
+        self.reader = extif_reader
         self.reader.telemetry_received.connect(self.on_telemetry_received)
 
         self.timer = QTimer()
@@ -34,17 +36,30 @@ class SerialDataGenerator(QObject):
         )
 
     def start(self, interval_ms=100):
-        self.reader.start()
-        self.timer.start(interval_ms)
+        success = self.reader.start()
+
+        if success:
+            self._is_connected = True
+            self.timer.start(interval_ms)
+            self.connection_changed.emit(True)
+        else:
+            self._is_connected = False
+            self.connection_changed.emit(False)
 
     def stop(self):
         self.timer.stop()
         self.reader.stop()
+        if self._is_connected:
+            self._is_connected = False
+            self.connection_changed.emit(False)
 
     def on_telemetry_received(self, telemetry):
         self.current_state.update(telemetry)
 
     def emit_state(self):
+        if not self._is_connected:
+            return
+
         current_time = time.time() - self.start_time
 
         frame = TelemetryFrame(
