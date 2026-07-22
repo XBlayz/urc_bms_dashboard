@@ -57,8 +57,8 @@ class SerialBmsCommandSender(AbstractBmsCommandSender):
         payload = telemetry.SerializeToString()
         return self._send_protobuf(payload, "charging_settings")
 
-    def send_initiali_state_request(self) -> bool:
+    def send_initial_state_request(self) -> bool:
         telemetry = messages_pb2.BmsTelemetry() # pyright: ignore[reportAttributeAccessIssue]
-        telemetry.initiali_state_request.SetInParent()
+        telemetry.initial_state_request.SetInParent()
         payload = telemetry.SerializeToString()
-        return self._send_protobuf(payload, "initiali_state_request")
+        return self._send_protobuf(payload, "initial_state_request")

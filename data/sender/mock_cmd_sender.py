@@ -25,3 +25,8 @@ class MockBmsCommandSender(AbstractBmsCommandSender):
         logging.info(f"[MOCK SENDER] charging_settings: voltage={voltage}, current={current}")
         self.command_sent.emit("charging_settings", True)
         return True
+
+    def send_initial_state_request(self) -> bool:
+        logging.info(f"[MOCK SENDER] initial state request")
+        self.command_sent.emit("initial_state_request", True)
+        return True
