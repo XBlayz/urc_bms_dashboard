@@ -1,5 +1,7 @@
 from typing import Optional
 
+from PyQt6.QtWidgets import QPushButton
+
 
 class Theme:
     H_SIZE_S = 500
@@ -410,6 +412,32 @@ class Theme:
     def feedback_label(cls, is_success=True):
         color = "#00FF00" if is_success else "#FF4444"
         return f"color: {color}; font-size: 12px; font-weight: bold;"
+
+    @classmethod
+    def pop_up_button_style(cls, btn: QPushButton, border_color: str):
+        """
+        Applies a custom border color while preserving the standard native OS look
+        (rounded corners, padding, and subtle hover effects for dark themes).
+        """
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                border: 1px solid {border_color};
+                border-radius: 5px;
+                padding: 5px 16px;
+                background-color: transparent;
+            }}
+            QPushButton:hover {{
+                background-color: rgba(255, 255, 255, 0.08);
+            }}
+            QPushButton:pressed {{
+                background-color: rgba(255, 255, 255, 0.15);
+            }}
+            QPushButton:disabled {{
+                border: 1px solid #444444;
+                color: #777777;
+                background-color: transparent;
+            }}
+        """)
 
     # PyQtGraph Colors
     PG_BG = "#2A2A2A"

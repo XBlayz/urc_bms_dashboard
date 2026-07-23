@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QMessageBox, QWidget, QSizePolicy
+    QLineEdit, QWidget, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QTimer
 
@@ -12,6 +12,7 @@ from ui.widgets.plates import EnumStatePlate, UnitPlate, TimePlate
 from ui.widgets.responsive_grid import ResponsiveGrid
 from ui.widgets.plot_host_mixin import PlotHostMixin
 from ui.widgets.stacked_widget import CurrentPageStackedWidget
+from ui.widgets.charging_dialogs import ChargingConfirmDialog
 from ui.screens.telemetry_screen import TelemetryScreen
 from ui.screens.logic.charging_controller import ChargingController, SETTINGS_MATCH_TOLERANCE
 from ui.fsm_state import fsm_state_labels
@@ -172,7 +173,7 @@ class ChargingScreen(TelemetryScreen, PlotHostMixin):
         layout.addLayout(top_row)
 
         # --- Plots, one per row, full width (Plot(SoC), Plot(Voltage), Plot(Current)) ---
-        soc_row = ResponsiveGrid(min_item_width=350)
+        soc_row = ResponsiveGrid(min_item_width=Theme.W_SIZE_S + 20)
         self.soc_plot = self._build_history_plot(
             Strings.LBL_SOC_HISTORY, "%", "SoC", "No SoC history", Theme.SIGNAL_COLORS["soc"]
         )
@@ -180,7 +181,7 @@ class ChargingScreen(TelemetryScreen, PlotHostMixin):
         soc_row.add_item(self.soc_plot)
         layout.addWidget(soc_row, stretch=1)
 
-        voltage_row = ResponsiveGrid(min_item_width=350)
+        voltage_row = ResponsiveGrid(min_item_width=Theme.W_SIZE_S + 20)
         self.voltage_plot = self._build_history_plot_with_target(
             Strings.LBL_VOLTAGE_HISTORY, "V", [Strings.LBL_CHARGE_VOLTAGE, "Target Voltage"], "No voltage history",
             Theme.SIGNAL_COLORS["pack_voltage_pre_air"]
@@ -189,7 +190,7 @@ class ChargingScreen(TelemetryScreen, PlotHostMixin):
         voltage_row.add_item(self.voltage_plot)
         layout.addWidget(voltage_row, stretch=1)
 
-        current_row = ResponsiveGrid(min_item_width=350)
+        current_row = ResponsiveGrid(min_item_width=Theme.W_SIZE_S + 20)
         self.current_plot = self._build_history_plot_with_target(
             Strings.LBL_CURRENT_HISTORY, "A", [Strings.LBL_CHARGE_CURRENT, "Target Current"], "No current history",
             Theme.SIGNAL_COLORS["pack_current"]
@@ -242,12 +243,11 @@ class ChargingScreen(TelemetryScreen, PlotHostMixin):
             self.feedback_lbl.setText(Strings.MSG_INVALID_INPUT)
             return
 
-        reply = QMessageBox.question(
-            self, Strings.TITLE_CHARGING_SUMMARY,
-            Strings.MSG_CONFIRM_START.format(voltage=voltage, current=current),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        # Modifica inizia qui
+        dialog = ChargingConfirmDialog(voltage, current, parent=self)
+        dialog.exec()
+
+        if dialog.confirmed:
             # START
             self.controller.handle_charging_button_click()
 

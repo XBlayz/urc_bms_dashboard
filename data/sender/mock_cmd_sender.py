@@ -27,6 +27,21 @@ class MockBmsCommandSender(AbstractBmsCommandSender):
         return True
 
     def send_initial_state_request(self) -> bool:
-        logging.info(f"[MOCK SENDER] initial state request")
+        logging.info("[MOCK SENDER] initial state request")
         self.command_sent.emit("initial_state_request", True)
+        return True
+
+    def send_override_start(self) -> bool:
+        logging.info("[MOCK SENDER] override_start")
+        self.command_sent.emit("override_start", True)
+        return True
+
+    def send_override_stop(self) -> bool:
+        logging.info("[MOCK SENDER] override_stop")
+        self.command_sent.emit("override_stop", True)
+        return True
+
+    def send_actuator_override(self, actuator: str, mode: int) -> bool:
+        logging.info(f"[MOCK SENDER] actuator_override: actuator={actuator}, mode={mode}")
+        self.command_sent.emit("actuator_override", True)
         return True

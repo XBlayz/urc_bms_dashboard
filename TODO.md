@@ -17,12 +17,18 @@ lang: en
 - [ ] Fix autoscroll in table view
 - [ ] Cursor measurements data view
 - [ ] Better aesthetic scrollbar
+- [ ] Override procedure help
+  - [ ] AIR- blinking brighter when pre-charging is finished
+  - [ ] Pre-charge blinking orange when AIR- is closed and pre-charge is still closed
+  - [ ] Wait for manual control buttons state update (grayed out)
+- [ ] Charging screen target graphs
+  - [ ] Change colors to white
+  - [ ] Fix continues updating for each telemetry update
 
 ## Features
 - [ ] "Charging" screen
   - [ ] Pack balancing matrix view
   - [ ] Manual balancing
-- [ ] "Override" screen
 - [ ] "Logs" screen
   - [ ] Fault widgets
 - [ ] "Sidebar"

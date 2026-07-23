@@ -23,3 +23,15 @@ class AbstractBmsCommandSender(QObject):
 
     def send_initial_state_request(self) -> bool:
         raise NotImplementedError("Subclasses must implement send_initial_state_request")
+
+    def send_override_start(self) -> bool:
+        raise NotImplementedError("Subclasses must implement send_override_start")
+
+    def send_override_stop(self) -> bool:
+        raise NotImplementedError("Subclasses must implement send_override_stop")
+
+    #TODO: Da rivedere
+    def send_actuator_override(self, actuator: str, mode: int) -> bool:
+        """`actuator` is one of 'air_pos'/'air_neg'/'pre_charge'/'sdc'; `mode` is
+        ACTUATOR_MODE_AUTO/FORCE_OFF/FORCE_ON (see ui.screens.logic.override_controller)."""
+        raise NotImplementedError("Subclasses must implement send_actuator_override")

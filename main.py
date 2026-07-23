@@ -73,6 +73,9 @@ def generator_setup(args: argparse.Namespace, window, uart_reader, command_sende
         command_sender.sig_charging_stop_requested.connect(generator.on_charging_stop_requested)
         command_sender.sig_charging_settings_updated.connect(generator.on_charging_settings_updated)
         command_sender.sig_initial_state_requested.connect(generator.on_initial_state_requested)
+        command_sender.sig_override_start_requested.connect(generator.on_override_start_requested)
+        command_sender.sig_override_stop_requested.connect(generator.on_override_stop_requested)
+        command_sender.sig_actuator_override_requested.connect(generator.on_actuator_override_requested)
 
         setup_dpg_mock_controller(generator)
 

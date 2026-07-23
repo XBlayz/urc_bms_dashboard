@@ -3,6 +3,23 @@ from data.sender.bms_command_sender import AbstractBmsCommandSender
 from data.extif_reader import extif_calculate_crc16, ExtifUartReader
 from data.proto import messages_pb2
 
+
+# Maps the local actuator key convention (used throughout state.py/plates/screens)
+# to the wire-level ActuatorId enum.
+#TODO: Da rivedere
+#_ACTUATOR_ID_MAP = {
+#    "air_pos": messages_pb2.ACTUATOR_AIR_POS, # pyright: ignore[reportAttributeAccessIssue]
+#    "air_neg": messages_pb2.ACTUATOR_AIR_NEG, # pyright: ignore[reportAttributeAccessIssue]
+#    "pre_charge": messages_pb2.ACTUATOR_PRE_CHARGE, # pyright: ignore[reportAttributeAccessIssue]
+#    "sdc": messages_pb2.ACTUATOR_SDC, # pyright: ignore[reportAttributeAccessIssue]
+#}
+_ACTUATOR_ID_MAP = {
+    "air_pos": 1, # pyright: ignore[reportAttributeAccessIssue]
+    "air_neg": 2, # pyright: ignore[reportAttributeAccessIssue]
+    "pre_charge": 3, # pyright: ignore[reportAttributeAccessIssue]
+    "sdc": 4, # pyright: ignore[reportAttributeAccessIssue]
+}
+
 class SerialBmsCommandSender(AbstractBmsCommandSender):
     """
     Concrete implementation of AbstractBmsCommandSender using a shared ExtifUartReader,
@@ -62,3 +79,22 @@ class SerialBmsCommandSender(AbstractBmsCommandSender):
         telemetry.initial_state_request.SetInParent()
         payload = telemetry.SerializeToString()
         return self._send_protobuf(payload, "initial_state_request")
+
+    def send_override_start(self) -> bool:
+        telemetry = messages_pb2.BmsTelemetry() # pyright: ignore[reportAttributeAccessIssue]
+        telemetry.override_start.SetInParent()
+        payload = telemetry.SerializeToString()
+        return self._send_protobuf(payload, "override_start")
+
+    def send_override_stop(self) -> bool:
+        telemetry = messages_pb2.BmsTelemetry() # pyright: ignore[reportAttributeAccessIssue]
+        telemetry.override_stop.SetInParent()
+        payload = telemetry.SerializeToString()
+        return self._send_protobuf(payload, "override_stop")
+
+    def send_actuator_override(self, actuator: str, mode: int) -> bool:
+        telemetry = messages_pb2.BmsTelemetry() # pyright: ignore[reportAttributeAccessIssue]
+        telemetry.actuator_override.actuator = _ACTUATOR_ID_MAP[actuator]
+        telemetry.actuator_override.mode = mode
+        payload = telemetry.SerializeToString()
+        return self._send_protobuf(payload, "actuator_override")

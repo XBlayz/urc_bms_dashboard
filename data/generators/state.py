@@ -73,6 +73,8 @@ class BmsTelemetryState:
         self.is_charging_active: bool = False
         self.is_charging_stopping: bool = False
 
+        self.is_override_active: bool = False
+
     @property
     def bms_status(self) -> Optional['BmsState']:
         return self._bms_status
@@ -163,6 +165,8 @@ class BmsTelemetryState:
         self.is_charging_starting = self._bms_status == BmsState.PREPARING_CHARGING
         self.is_charging_active = self._bms_status == BmsState.CHARGING
         self.is_charging_stopping = self._bms_status == BmsState.EXITING_CHARGING
+
+        self.is_override_active = self._bms_status == BmsState.OVERRIDE
 
     def _reset_transient_states(self):
         self.charging_set_voltage = None

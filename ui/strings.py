@@ -83,7 +83,7 @@ class Strings:
     LBL_UPTIME = "UPTIME"
     LBL_FAULTS = "FAULTS"
     LBL_PACK_VOLTAGE = "PACK VOLTAGE"
-    LBL_PACK_VOLTAGE_POST_AIR = "PACK VOLTAGE (POST AIR)"
+    LBL_PACK_VOLTAGE_POST_AIR = "DC LINK VOLTAGE"
     LBL_PACK_CURRENT = "PACK CURRENT"
     LBL_SOC = "SoC"
     LBL_SOP_DISCHG = "SOP DISCHARGE"
@@ -129,17 +129,43 @@ class Strings:
     TITLE_CHARGING_SUMMARY = "Charging Summary"
     MSG_CONFIRM_START = "Start charging with current settings:\n- Voltage = {voltage:.1f} V\n- Current = {current:.1f} A"
 
-    # logs / override / settings (placeholders, TODO)
+    # override screen
+    BTN_ENABLE_OVERRIDE = "ENABLE OVERRIDE"
+    BTN_DISABLE_OVERRIDE = "DISABLE OVERRIDE"
+    LBL_OVERRIDE_STATE = "OVERRIDE STATE"
+    LBL_VOLTAGE_RATIO = "DC-LINK / PACK"
+    LBL_VOLTAGE_THRESHOLD = "CLOSE THRESHOLD"
+    BTN_ENABLE_OVERRIDE = "ENABLE OVERRIDE"
+    TITLE_MANUAL_CONTROL = "MANUAL ACTUATOR CONTROL"
+    TITLE_CIRCUIT_DIAGRAM = "RELAY CIRCUIT"
+    TITLE_VOLTAGE_RATIO_HISTORY = "DC-LINK / PACK RATIO"
+    MSG_OVERRIDE_DISABLED_HINT = "Enable override to control actuators manually."
+    TITLE_GUARDRAIL_DIALOG = "Relay Closure Guardrail"
+    MSG_GUARDRAIL_VOLTAGE = (
+        "Closing this relay will connect the battery to the DC link.\n"
+        "DC-LINK/Pack voltage ratio is {ratio:.1f}%, below the {threshold:.0f}% safety threshold.\n\n"
+        "Choose how to proceed:"
+    )
+    BTN_CANCEL = "Cancel"
+    BTN_PRE_CHARGE_OPTION = "Pre-Charge"
+    BTN_FORCE_OPTION = "Force"
+    TITLE_FORCE_CONFIRM_DIALOG = "Force Relay Closure"
+    MSG_FORCE_WARNING = (
+        "This bypasses the voltage safety guardrail and connect the battery directly to the DC link.\n\n"
+        "Only proceed if the battery is handled correctly managing the potential inrush current."
+    )
+    BTN_CONFIRM = "Confirm"
+
+    # logs / settings (placeholders, TODO)
     LBL_LOGS = "LOGS"
     LBL_NO_LOGS = "No logs available yet."
-    MSG_TODO_OVERRIDE = "TODO: Override controls not implemented yet."
     MSG_TODO_LOGS = "TODO: Logs view not implemented yet."
     MSG_TODO_SETTINGS = "TODO: Settings not implemented yet."
 
     # plots
     TITLE_SOC = "SoC"
     TITLE_PACK_VOLTAGE = "PACK VOLTAGE"
-    TITLE_PACK_VOLTAGE_POST_AIR = "PACK VOLTAGE (POST AIR)"
+    TITLE_PACK_VOLTAGE_POST_AIR = "DC LINK VOLTAGE"
     TITLE_PACK_CURRENT = "PACK CURRENT"
     TITLE_FSM_STATE = "FSM STATE"
     TITLE_ACTUATOR_STATE = "ACTUATOR STATE"

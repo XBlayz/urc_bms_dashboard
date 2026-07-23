@@ -23,7 +23,7 @@ class DualVoltagesPlot(TimeSeriesPlotWidget):
             title=Strings.TITLE_PACK_VOLTAGE,
             unit="V",
             series_count=2,
-            label_formatter_callback=lambda i: ["Pre AIR", "Post AIR"][i],
+            label_formatter_callback=lambda i: ["PACK (Pre-AIR)", "DC LINK (Post-AIR)"][i],
             empty_text="No voltage data",
             colors=[Theme.SIGNAL_COLORS["pack_voltage_pre_air"], Theme.SIGNAL_COLORS["pack_voltage_post_air"]],
             stats_mode="window",

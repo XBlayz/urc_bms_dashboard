@@ -76,7 +76,7 @@ class DashboardWindow(QMainWindow):
         screen_factories = {
             "metrics": lambda: MetricsScreen(self.volt_mapping, self.temp_mapping),
             "charging": lambda: ChargingScreen(self.command_sender),
-            "override": OverrideScreen,
+            "override": lambda: OverrideScreen(self.command_sender),
             "logs": LogsScreen,
             "settings": SettingsScreen,
         }
@@ -94,6 +94,7 @@ class DashboardWindow(QMainWindow):
 
         self.metrics_screen = self.stack.widget(self._nav_index_map["metrics"])
         self.charging_screen = self.stack.widget(self._nav_index_map["charging"])
+        self.override_screen = self.stack.widget(self._nav_index_map["override"])
 
         self.stack.setCurrentIndex(0)
 

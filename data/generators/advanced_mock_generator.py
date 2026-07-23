@@ -11,6 +11,12 @@ from data.proto import messages_pb2
 from data.hardware.hardware_config import SLAVE_COUNT, CELLS_PER_SLAVE, TEMP_SENSORS_PER_SLAVE
 
 
+# --- Circuit Simulation Parameters ---
+DC_LINK_C = 0.002       # 2   mF   typical inverter capacitance
+R_SERIES = 0.015        # 15  mOhm combined contactor and line resistance
+R_PRECHARGE = 500.0     # 500  Ohm pre-charge resistor
+R_BLEED = 700.0         # 700  Ohm passive discharge bleed resistor
+
 class AdvancedMockGenerator(QObject):
     telemetry_frame_updated = pyqtSignal(TelemetryFrame)
     connection_changed = pyqtSignal(bool)
@@ -37,6 +43,8 @@ class AdvancedMockGenerator(QObject):
         self._charging_requested = False
 
         self._pending_settings_ack = False
+
+        self._post_air_voltage = 0.0
 
         # UI Modifiers initialization
         self._force_initializing = False
@@ -158,6 +166,28 @@ class AdvancedMockGenerator(QObject):
 
         self._send_charging_parameters()
 
+    @pyqtSlot()
+    def on_override_start_requested(self):
+        # Manual override can only be entered from a safe, at-rest FSM state.
+        if self.mock_fsm_state in (BmsState.STANDBY.value, BmsState.DRIVING.value):
+            self._set_fsm_state(BmsState.OVERRIDE.value)
+
+    @pyqtSlot()
+    def on_override_stop_requested(self):
+        if self.mock_fsm_state == BmsState.OVERRIDE.value:
+            # Release every actuator back to automatic FSM control on exit.
+            for actuator in self._actuator_overrides:
+                self._actuator_overrides[actuator] = None
+            self._set_fsm_state(BmsState.STANDBY.value)
+
+    @pyqtSlot(str, int)
+    def on_actuator_override_requested(self, actuator: str, mode: int):
+        # Manual per-actuator control is only honored while override is active;
+        # the dashboard already disables the switches otherwise.
+        if self.mock_fsm_state != BmsState.OVERRIDE.value:
+            return
+        self.set_actuator_override(actuator, mode)
+
     # --- Core Loop ---
     def start(self):
         self._last_tick = time.time()
@@ -231,6 +261,9 @@ class AdvancedMockGenerator(QObject):
             return
         if self._forced_error_code > 0:
             return
+        if self.mock_fsm_state == BmsState.OVERRIDE.value:
+            # Frozen while under manual control; exited only via on_override_stop_requested.
+            return
 
         self.mock_fsm_timer += dt
         st = self.mock_fsm_state
@@ -274,6 +307,25 @@ class AdvancedMockGenerator(QObject):
 
         return air_pos, air_neg, pre_charge, sdc
 
+    def _get_actual_contactor_states(self) -> tuple[bool, bool, bool, bool]:
+        """
+        Calculates the effective state of all contactors by combining the current
+        FSM status with any active manual hardware overrides.
+        """
+        is_initializing = (self.mock_fsm_state == BmsState.INITIALIZING.value)
+        if is_initializing:
+            return False, False, False, False
+
+        has_error = (self._forced_error_code > 0) or (self.mock_fsm_state == BmsState.ERROR.value)
+        air_pos, air_neg, pre_charge, sdc = self._contactors_for_state(self.mock_fsm_state, has_error)
+
+        actual_air_pos = bool(air_pos if self._actuator_overrides["air_pos"] is None else self._actuator_overrides["air_pos"])
+        actual_air_neg = bool(air_neg if self._actuator_overrides["air_neg"] is None else self._actuator_overrides["air_neg"])
+        actual_pre_charge = bool(pre_charge if self._actuator_overrides["pre_charge"] is None else self._actuator_overrides["pre_charge"])
+        actual_sdc = bool(sdc if self._actuator_overrides["sdc"] is None else self._actuator_overrides["sdc"])
+
+        return actual_air_pos, actual_air_neg, actual_pre_charge, actual_sdc
+
     def _diagnostic_state_for(self, state, elapsed):
         if state != 3:
             return 0
@@ -303,11 +355,30 @@ class AdvancedMockGenerator(QObject):
         elif group == "medium":
             # --- PACK STATE ---
             if not is_initializing:
+                dt = self.update_rates["medium"]
                 v = 380.0 + np.sin(current_time * 0.1) * 10.0 + np.random.normal(0, 0.5)
+
+                air_pos, air_neg, pre_charge, sdc = self._get_actual_contactor_states()
+
+                # The circuit is physically closed only if SDC, AIR+ and at least one negative return path are active
+                circuit_closed = sdc and air_pos and (air_neg or pre_charge)
+
+                if circuit_closed:
+                    r_path = R_SERIES if air_neg else (R_SERIES + R_PRECHARGE)
+                    tau = r_path * DC_LINK_C
+                    # Exact RC step response to prevent instability at larger dt
+                    self._post_air_voltage = v + (self._post_air_voltage - v) * np.exp(-dt / tau)
+                else:
+                    tau_bleed = R_BLEED * DC_LINK_C
+                    self._post_air_voltage = self._post_air_voltage * np.exp(-dt / tau_bleed)
+
+                # Append standard normally distributed sensor noise
+                simulated_post_air = max(0.0, self._post_air_voltage + np.random.normal(0, 0.1))
+
                 pack_state = messages_pb2.PackState( # pyright: ignore[reportAttributeAccessIssue]
                     voltage=float(v),
                     current=float(50.0 + np.cos(current_time * 0.15) * 20.0 + np.random.normal(0, 0.3)),
-                    post_air_voltage=float(v - 2.0 + np.random.normal(0, 0.1)),
+                    post_air_voltage=float(simulated_post_air),
                     soc=float(max(0.0, min(100.0, 75.0 + np.sin(current_time * 0.05) * 15.0))),
                     sop_dischg=float(200.0 + np.random.normal(0, 5.0)),
                     sop_chg=float(150.0 + np.random.normal(0, 5.0))
@@ -333,14 +404,13 @@ class AdvancedMockGenerator(QObject):
                     diagnostic_state=0, ams_error=False
                 )
             else:
-                has_error = (self._forced_error_code > 0) or (self.mock_fsm_state == BmsState.ERROR.value)
-                air_pos, air_neg, pre_charge, sdc = self._contactors_for_state(self.mock_fsm_state, has_error)
+                air_pos, air_neg, pre_charge, sdc = self._get_actual_contactor_states()
 
                 contactors = messages_pb2.ActuatorState( # pyright: ignore[reportAttributeAccessIssue]
-                    air_pos=bool(air_pos if self._actuator_overrides["air_pos"] is None else self._actuator_overrides["air_pos"]),
-                    air_neg=bool(air_neg if self._actuator_overrides["air_neg"] is None else self._actuator_overrides["air_neg"]),
-                    pre_charge=bool(pre_charge if self._actuator_overrides["pre_charge"] is None else self._actuator_overrides["pre_charge"]),
-                    sdc=bool(sdc if self._actuator_overrides["sdc"] is None else self._actuator_overrides["sdc"])
+                    air_pos=air_pos,
+                    air_neg=air_neg,
+                    pre_charge=pre_charge,
+                    sdc=sdc
                 )
 
                 diag_state = self._forced_error_code if self._forced_error_code > 0 else self._diagnostic_state_for(self.mock_fsm_state, current_time)
